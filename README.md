@@ -20,14 +20,16 @@ The data shown for demonstartion is artificially generated to demonstrate the to
 
 https://docs.google.com/spreadsheets/d/1lUBxxTinGEsp1tmXDTsw29en6hKfYR798QdEFgQAPOU/edit?gid=0#gid=0
 
-## 🙋‍♀️ Contribute to this project
-
 Instead of a single main branch, we use two branches to record the history of the project:
 
 - `develop`: development and default branch for new features and bug fixes.
 - `main`: production branch is used to deploy the server components to the `production` environment.
 
-Please, follow the 📗 [Contribution guidelines](/docs/contribute.md) in order to participate to this project.
+Please, follow the 📗 [Contribution guidelines](docs/contribute.md) in order to participate in this project.
+
+## 📚 Documentation on Classes
+
+For a detailed breakdown of each class and its methods, refer to our [Class Documentation](docs/index.md).
 
 ### 🛟 A note on language
 
