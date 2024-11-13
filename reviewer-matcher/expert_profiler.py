@@ -1,8 +1,5 @@
 class ExpertProfiler:
     BASE_URL = "https://api.openalex.org"
-    # initialize classifiers once
-    research_phase_classifier = pipeline("text-classification", model="SIRIS-Lab/batracio5")
-    domain_classifier = pipeline("text-classification", model="SIRIS-Lab/biomedicine-classifier")
 
     def query_openalex_by_name(full_name):
         # constructs the url for the authors endpoint in the openalex api
@@ -39,8 +36,8 @@ class ExpertProfiler:
         url = f"{BASE_URL}/works"
         # sets the filter to retrieve works by the specified author id
         # sorts results by publication date in descending order
-        # limits the results to 100 per page
-        params = {"filter": f"authorships.author.id:{author_id}", "sort": "publication_date:desc", "per-page": 100}
+        # limits the results to 5 per page
+        params = {"filter": f"authorships.author.id:{author_id}", "sort": "publication_date:desc", "per-page": 5}
         # sends a get request to the api with the url and filter parameters
         response = requests.get(url, params=params)
         # checks if the request was successful
@@ -242,42 +239,43 @@ class ExpertProfiler:
         df = pd.DataFrame(publications)
         # adds a column for the author's name to the dataframe
         df['author_name'] = author_name
-        
         # ensures the directory in the save path exists, creating it if necessary
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        
         # saves the dataframe to a csv file at the specified save path without the index column
         df.to_csv(save_path, index=False)
+        # prints a message indicating where the enriched data was saved
+        print(f"Enriched data saved to {save_path}.")
 
     def predict_gender_namsor(name, api_key):
-    try:
-        # removes titles and honorifics from the name using regular expressions
-        titles = ['Dr', 'Prof', 'Prof. ', 'Professor', 'Mr', 'Ms', 'Mrs', 'Miss']
-        pattern = re.compile(r'\b(?:' + '|'.join(re.escape(title) for title in titles) + r')\.?\b', re.IGNORECASE)
-        name = pattern.sub('', name).strip()
-        
-        # splits the name into first and last names
-        first_name, last_name = name.split()[0], name.split()[-1] 
-        # constructs the url for the namsor api with the first and last names
-        url = f"https://v2.namsor.com/NamSorAPIv2/api2/json/gender/{first_name}/{last_name}"
-        # sets the api key in the headers
-        headers = {'X-API-KEY': api_key}
-        # sends a get request to the namsor api
-        response = requests.get(url, headers=headers)
-        
-        # checks if the response is successful
-        if response.status_code == 200:
-            # parses the json response and retrieves the likely gender
-            result = response.json()
-            return result.get('likelyGender', 'unknown')
-        else:
-            # returns 'unknown' if the request was not successful
+        api_key = "d17525f409e675a5c89c428e1aae6871"
+        try:
+            # removes titles and honorifics from the name using regular expressions
+            titles = ['Dr', 'Prof', 'Prof. ', 'Professor', 'Mr', 'Ms', 'Mrs', 'Miss']
+            pattern = re.compile(r'\b(?:' + '|'.join(re.escape(title) for title in titles) + r')\.?\b', re.IGNORECASE)
+            name = pattern.sub('', name).strip()
+            
+            # splits the name into first and last names
+            first_name, last_name = name.split()[0], name.split()[-1] 
+            # constructs the url for the namsor api with the first and last names
+            url = f"https://v2.namsor.com/NamSorAPIv2/api2/json/gender/{first_name}/{last_name}"
+            # sets the api key in the headers
+            headers = {'X-API-KEY': api_key}
+            # sends a get request to the namsor api
+            response = requests.get(url, headers=headers)
+            
+            # checks if the response is successful
+            if response.status_code == 200:
+                # parses the json response and retrieves the likely gender
+                result = response.json()
+                return result.get('likelyGender', 'unknown')
+            else:
+                # returns 'unknown' if the request was not successful
+                return 'unknown'
+        except Exception as e:
+            # handles any exceptions and prints an error message
+            print(f"Error processing name '{name}': {e}")
+            # returns 'unknown' in case of an exception
             return 'unknown'
-    except Exception as e:
-        # handles any exceptions and prints an error message
-        print(f"Error processing name '{name}': {e}")
-        # returns 'unknown' in case of an exception
-        return 'unknown'
 
     def enrich_data_with_predicted_gender(df, api_key):
         # applies the predict_gender_namsor function to each name in the 'Full Name:' column
@@ -285,17 +283,15 @@ class ExpertProfiler:
         # returns the dataframe with the new 'Predicted Gender:' column
         return df
 
-    def save_enriched_data(df, folder_path):
-        # constructs the file path for saving the csv file
-        file_path = os.path.join(folder_path, '03_gender_predictions', 'authors_with_gender.csv')
+    def save_gender_to_csv(df, folder_path):
         # ensures the directory in the file path exists, creating it if necessary
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        os.makedirs(os.path.dirname(folder_path), exist_ok=True)
         # saves the dataframe to a csv file at the constructed file path without the index column
-        df.to_csv(file_path, index=False)
+        df.to_csv(folder_path, index=False)
         # prints a message indicating where the enriched data was saved
-        print(f"Enriched data saved to {file_path}.")
+        print(f"Enriched data saved to {folder_path}.")
     
-    def calculate_metrics(y_true, y_pred):
+    def calculate_gender_metrics(y_true, y_pred):
         # creates a dataframe with actual and predicted values
         results = pd.DataFrame({'Actual': y_true, 'Predicted': y_pred})
     
@@ -321,6 +317,7 @@ class ExpertProfiler:
         return accuracy, precision, recall, f1
 
     def classify_research_phase(text):
+        research_phase_classifier = pipeline("text-classification", model="SIRIS-Lab/batracio5")
         # checks if text is a non-empty string
         if isinstance(text, str) and text.strip():
             # uses the research_phase_classifier to get the label of the text
@@ -329,6 +326,7 @@ class ExpertProfiler:
         return 'Unknown'  # default label for invalid input
 
     def classify_domain(text):
+        domain_classifier = pipeline("text-classification", model="SIRIS-Lab/biomedicine-classifier")
         # checks if text is a non-empty string
         if isinstance(text, str) and text.strip():
             # uses the domain_classifier to get the label of the text
@@ -336,7 +334,7 @@ class ExpertProfiler:
         # returns 'unknown' if the input is invalid
         return 'Unknown'  # default label for invalid input
 
-    def process_publications(author_file, output_folder):
+    def classify_publications(author_file, output_folder):
         # reads the author file into a dataframe
         df = pd.read_csv(author_file)
     
@@ -355,15 +353,15 @@ class ExpertProfiler:
         # prints a message confirming the processed file and saved location
         print(f"Processed {author_file}, saved to {output_path}")
     
-    def process_all_publications(input_folder, output_folder):
+    def classify_all_publications(input_folder, output_folder):
         # iterates over each file in the input folder
         for author_file in os.listdir(input_folder):
             # checks if the file has a '.csv' extension
             if author_file.endswith('.csv'):
                 # processes the publication file and saves it to the output folder
-                process_publications(os.path.join(input_folder, author_file), output_folder)
+                classify_publications(os.path.join(input_folder, author_file), output_folder)
 
-    def compute_statistics(output_folder):
+    def compute_classification_statistics(output_folder):
         # initializes an empty dataframe to hold all data
         all_data = pd.DataFrame()
         
@@ -383,7 +381,7 @@ class ExpertProfiler:
         # returns the calculated statistics for research phase and domain
         return research_phase_counts, domain_counts
 
-    def load_data(output_folder):
+    def combine_data(output_folder):
         # initializes an empty list to store dataframes
         data_frames = []
         
@@ -426,7 +424,7 @@ class ExpertProfiler:
 
     def rank_mesh_terms_across_all(output_folder):
         # loads the combined data from the output folder
-        combined_df = load_data(output_folder)
+        combined_df = combine_data(output_folder)
         
         # extracts mesh terms as strings for tf-idf processing
         combined_df['mesh_term'] = combined_df['mesh'].apply(lambda terms: extract_mesh_terms_string(terms))
@@ -520,7 +518,7 @@ class ExpertProfiler:
     
         # processes all publication files in the input folder
         for author_file in os.listdir(input_folder):
-            if author_file.endswith('.csv'):  # change this if your files have a different suffix
+            if author_file.endswith('.csv'):  # change this if files have a different suffix
                 # loads the author's publication file into a dataframe
                 df = pd.read_csv(os.path.join(input_folder, author_file))
                 # checks if the 'title' column exists
