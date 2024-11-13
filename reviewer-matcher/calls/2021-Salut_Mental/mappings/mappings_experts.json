@@ -1,9 +1,9 @@
 {
-    "call_name": "2021-Salut Mental",
-    "experts_url": "https://docs.google.com/spreadsheets/d/13B0Bg58xJL3E_PedXWzEk1-KIwIYhTwfLu9tkf8Efqg/edit",
+    "call_name": "2021-Salut_Mental",
+    "input_file": "input_experts_aquas.xlsx",
     "header_row": 0,
     "first_data_row": 1, 
-    "column_mappings_experts": {
+    "column_mappings": {
       "FULL_NAME": "A",
       "ORCID": "B",
       "GENDER": "C",
@@ -19,15 +19,15 @@
       "NUMBER_PUBLICATIONS": "CD",
       "NUMBER_CITATIONS": "CE"
     },
-    "multi_column_values_experts": {
+    "multi_column_values": {
       "RESEARCH_TYPES": "I:M",
       "RESEARCH_AREAS": "P:AH",
       "RESEARCH_APPROACHES": "AK:BY"
     }, 
-    "separators_experts": {
+    "separators": {
       "POPULATION": ";"
     },
-    "values_experts": {
+    "values": {
       "GENDER": {
         "Male": "male",
         "Female": "female",

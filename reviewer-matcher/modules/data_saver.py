@@ -4,8 +4,9 @@ import pickle
 from datetime import datetime
 
 class DataSaver:
-    def __init__(self, output_dir):
-        self.output_dir = output_dir
+    def __init__(self, config_manager):
+        self.output_dir = self.config_manager.get('DATA_PATH')
+        self.separator = self.config_manager.get('SEPARATOR_VALUES_OUTPUT')
 
     def save_data(self, df, file_name, file_type=None, add_timestamp=False, verbose=True):
       extension = os.path.splitext(file_name)[-1].lower().strip('.')

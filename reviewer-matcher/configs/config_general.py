@@ -1,17 +1,17 @@
 ### Input paths and names.
 
 ### Calls
-#2015-Diabetis i Obesitat
+#2015-Diabetis_i_Obesitat
 #2016-Ictus
 #2017-Infeccioses
 #2018-Cancer
 #2019-Minoritaries
-#2021-Salut Mental
-#2022-Salut Cardiovascular
-#2023-Salut Sexual i Reproductiva
+#2021-Salut_Mental
+#2022-Salut_Cardiovascular
+#2023-Salut_Sexual_i_Reproductiva
 
 # Call to be processed (used to retrieve the configuration, URLs, etc).
-CALL = '2022-Salut Cardiovascular'
+CALL = '2021-Salut_Mental'
 
 # Directory with call-specific data.
 CALL_PATH = f'calls/{CALL}'

@@ -1,7 +1,7 @@
 {
-  "call_name": "2021-Salut Mental",
-  "projects_url": "https://docs.google.com/spreadsheets/d/1ju6wNo_gEn6EgJDAGnsqLecWfewA6SX7UODZ71j3n24/edit",
-  "column_mappings_projects": {
+  "call_name": "2021-Salut_Mental",
+  "input_file": "input_projects_aquas.xlsx",
+  "column_mappings": {
       "ID": "A",
       "TITLE": "B",
       "ABSTRACT": "C",
@@ -10,11 +10,11 @@
       "KEYWORDS": "F",
       "RESEARCH_TYPE": "G"
   },
-  "separators_projects": {
+  "separators": {
       "KEYWORDS": ";",
       "RESEARCH_TYPE": "-"
   },
-  "values_projects": {
+  "values": {
       "APPROACH_TYPE": {
           "Unitari": "single",
           "Coordinat": "multi"
