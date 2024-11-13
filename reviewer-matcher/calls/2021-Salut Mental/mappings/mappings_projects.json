@@ -1,0 +1,34 @@
+{
+  "call_name": "2021-Salut Mental",
+  "projects_url": "https://docs.google.com/spreadsheets/d/1ju6wNo_gEn6EgJDAGnsqLecWfewA6SX7UODZ71j3n24/edit",
+  "column_mappings_projects": {
+      "ID": "A",
+      "TITLE": "B",
+      "ABSTRACT": "C",
+      "APPROACH_TYPE": "D",
+      "POPULATION": "E",
+      "KEYWORDS": "F",
+      "RESEARCH_TYPE": "G"
+  },
+  "separators_projects": {
+      "KEYWORDS": ";",
+      "RESEARCH_TYPE": "-"
+  },
+  "values_projects": {
+      "APPROACH_TYPE": {
+          "Unitari": "single",
+          "Coordinat": "multi"
+      },
+      "RESEARCH_TYPE": {
+          "B\u00e0sica": "basic",
+          "Cl\u00ednica": "clinical",
+          "Epidemiol\u00f2gica": "epidemiology",
+          "Epidemiologia": "epidemiology"
+      },
+      "POPULATION": {
+          "All": "all",
+          "Adult": "adults",
+          "Paediatric Age": "children"
+      }
+  }
+}
