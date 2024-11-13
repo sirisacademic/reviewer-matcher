@@ -31,19 +31,6 @@ class DataReader:
         self.add_identifier_column()
         return self.data
 
-    """
-    def read_data(self, raw_data):
-        '''Map columns to standardized names using the settings.'''
-        # Read the data corresponding to the projects in the call.
-        header_row = raw_data[self.position_header_row]
-        data_rows = raw_data[self.position_first_data_row:]
-        print(header_row)
-        # Map project column names and values.
-        column_indices = {key: column_letter_to_index(col_letter) for key, col_letter in self.column_mappings.items()}
-        columns = [column_indices_projects[key] for key in self.column_mappings_projects.keys()]
-        self.data = pd.DataFrame([[row[idx] for idx in columns] for row in data_rows], columns=self.column_mappings.keys())
-    """
-
     def _get_header_values(self, raw_data):
         """Get a list of column headers or values from a specific row depending on position_first_data_row."""
         if self.position_header_row == 0:
@@ -63,7 +50,7 @@ class DataReader:
         self.data = pd.DataFrame([[row[idx] for idx in columns] for row in data_rows], columns=self.column_mappings.keys())
 
     def extract_multi_column_values(self, raw_data):
-        '''Combine column headers into a single field for specified column ranges where the cell value is 1.'''
+        '''Combine column headers into a single field for specified column ranges where the cell value is not empty or 0.'''
         for key, value_map in self.multi_column_values.items():
             # Extract the range of columns to join based on the Excel-style notation
             first_column, second_column = value_map.split(':')
@@ -75,7 +62,8 @@ class DataReader:
             # Concatenate column names for each row where the value is 1
             self.data[key] = columns_to_join.apply(
                 lambda row: self.separator_output.join(
-                    [clean_header_column(column_headers[idx]) for idx, value in enumerate(row) if str(value).strip() == '1']
+                    [clean_header_column(column_headers[idx])
+                      for idx, value in enumerate(row) if str(value).strip() and str(value).strip() != '0']
                 ),
                 axis=1
             )
@@ -84,11 +72,12 @@ class DataReader:
         '''Replace values in specified columns based on mappings in settings.'''
         # Replace values in relevant columns.
         for key, value_map in self.value_mappings.items():
-            input_separator = self.separator_settings.get(key, ';')
+            input_separator = self.separator_settings.get(key, ';') if key not in self.multi_column_values else self.separator_output
             self.data = replace_values(self.data, key, value_map, input_separator, self.separator_output)
         # Separator replacements for fields without value mappings.
         for key in set(self.separator_settings.keys()) - set(self.value_mappings.keys()):
-            self.data = replace_separators(self.data, key, self.separator_settings[key], self.separator_output) 
+            input_separator = self.separator_settings.get(key, ';') if key not in self.multi_column_values else self.separator_output
+            self.data = replace_separators(self.data, key, input_separator, self.separator_output) 
 
     def add_identifier_column(self):
         '''Add a sequential ID column if it does not already exist.'''

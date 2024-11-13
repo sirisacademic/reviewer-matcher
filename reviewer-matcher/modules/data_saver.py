@@ -5,6 +5,7 @@ from datetime import datetime
 
 class DataSaver:
     def __init__(self, config_manager):
+        # Configurations read from config file handled by config_manager.
         self.output_dir = config_manager.get('DATA_PATH')
         self.separator = config_manager.get('SEPARATOR_VALUES_OUTPUT')
 

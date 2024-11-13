@@ -12,9 +12,10 @@ def get_settings_by_call(json_file_path):
       settings_data = json.load(f)
   return settings_data
 
-# Convert column letter to index using gspread's utility function.
 """
 # Version for Google Sheets.
+# Convert column letter to index using gspread's utility function.
+
 def column_letter_to_index(letter):
 #---------------------------------
   _, col = gspread.utils.a1_to_rowcol(f'{letter}1')
