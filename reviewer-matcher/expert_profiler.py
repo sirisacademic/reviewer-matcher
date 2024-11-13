@@ -11,19 +11,17 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 
 class ExpertProfiler:
-    def __init__(self, data_path, api_key, hf_token, base_url="https://api.openalex.org"):
+    def __init__(self, data_path, api_key, base_url="https://api.openalex.org"):
         """
         Initialize the ExpertProfiler with a data path, API key, Hugging Face token, and base URL.
 
         Args:
             data_path (str): The path to the data folder.
             api_key (str): The API key for accessing OpenAlex.
-            hf_token (str): Hugging Face API token for accessing private models.
             base_url (str): The base URL for the OpenAlex API.
         """
         self.data_path = data_path
         self.api_key = api_key
-        self.hf_token = hf_token
         self.base_url = base_url
 
     def query_openalex_by_name(self, full_name):
@@ -271,8 +269,7 @@ class ExpertProfiler:
         # prints a message indicating where the enriched data was saved
         print(f"Enriched data saved to {save_path}.")
 
-    def predict_gender_namsor(name, api_key):
-        api_key = "d17525f409e675a5c89c428e1aae6871"
+    def predict_gender_namsor(self, name, api_key):
         try:
             # removes titles and honorifics from the name using regular expressions
             titles = ['Dr', 'Prof', 'Prof. ', 'Professor', 'Mr', 'Ms', 'Mrs', 'Miss']
@@ -284,7 +281,7 @@ class ExpertProfiler:
             # constructs the url for the namsor api with the first and last names
             url = f"https://v2.namsor.com/NamSorAPIv2/api2/json/gender/{first_name}/{last_name}"
             # sets the api key in the headers
-            headers = {'X-API-KEY': api_key}
+            headers = {'X-API-KEY': self.api_key}
             # sends a get request to the namsor api
             response = requests.get(url, headers=headers)
             
