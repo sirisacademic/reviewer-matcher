@@ -5,13 +5,13 @@ from datetime import datetime
 
 class DataSaver:
     def __init__(self, config_manager):
-        self.output_dir = self.config_manager.get('DATA_PATH')
-        self.separator = self.config_manager.get('SEPARATOR_VALUES_OUTPUT')
+        self.output_dir = config_manager.get('DATA_PATH')
+        self.separator = config_manager.get('SEPARATOR_VALUES_OUTPUT')
 
     def save_data(self, df, file_name, file_type=None, add_timestamp=False, verbose=True):
       extension = os.path.splitext(file_name)[-1].lower().strip('.')
       file_path = self._get_filepath(file_name, extension, add_timestamp)
-      # If file type not set, guess it from the extension.
+      # If file type not set, guess it from the extension if present.
       if not file_type:
           if extension in ['xlsx', 'xls']:
               file_type = 'excel'
@@ -37,17 +37,12 @@ class DataSaver:
       if verbose:
           print(f'Data saved to {file_path}')
 
-     def save_to_pickle(self, df, filename, add_timestamp=False):
-        '''Save DataFrame as a pickle file, optionally adding a timestamp to the file name.'''
-        filepath = self._get_filepath(filename, 'pkl', add_timestamp)
-        with open(filepath, 'wb') as file:
-            pickle.dump(df, file)
-        print(f'Data saved to {filepath}')
-
     def _get_filepath(self, file_name, extension, add_timestamp):
         '''Generate the full file path, optionally adding a timestamp for uniqueness.'''
         if add_timestamp:
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f'{filename}_{timestamp}'
-        return os.path.join(self.output_dir, f'{file_name}.{extension}')
+        if not file_name.endswith(extension):
+            file_name = f'{file_name}.{extension}'
+        return os.path.join(self.output_dir, file_name)
 

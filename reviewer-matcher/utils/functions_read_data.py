@@ -3,8 +3,6 @@
 import json                        # For reading JSON configuration files
 import re                          # For cleaning column names with regular expressions
 import string                      # For whitespace and punctuation handling
-import gspread                     # For accessing Google Sheets data
-
 
 # Function to get settings corresponding to a call.
 def get_settings_by_call(json_file_path):
@@ -14,11 +12,21 @@ def get_settings_by_call(json_file_path):
       settings_data = json.load(f)
   return settings_data
 
-# Convert column letter to index using gspread's utility function
+# Convert column letter to index using gspread's utility function.
+"""
+# Version for Google Sheets.
 def column_letter_to_index(letter):
 #---------------------------------
   _, col = gspread.utils.a1_to_rowcol(f'{letter}1')
   return col - 1
+"""
+
+def column_letter_to_index(letter):
+#---------------------------------
+  index = 0
+  for char in letter:
+      index = index * 26 + (ord(char.upper()) - ord('A') + 1)
+  return index - 1
 
 # Function used to replace ampersands and other problematic characters in spreadsheet column names.
 def clean_header_column(value):

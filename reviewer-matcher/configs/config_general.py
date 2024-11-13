@@ -48,6 +48,9 @@ FILE_PATH_PROJECTS_ALL_YEARS = 'calls/all_years/projects.pkl'
 # Separator for values in generated files.
 SEPARATOR_VALUES_OUTPUT = '|'
 
+# ID Column name to add if it does not exist.
+ID_COLUMN_NAME = 'ID'
+
 # HuggingFace token.
 HF_TOKEN = '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'
 

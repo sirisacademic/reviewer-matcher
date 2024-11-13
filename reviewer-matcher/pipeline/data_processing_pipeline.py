@@ -22,29 +22,19 @@ class DataProcessingPipeline:
         # Initialize DataSaver.
         self.data_saver = DataSaver(self.config_manager)
 
-    def load_projects(self):
-        '''Load and process project data.'''
-        '''The path of the source data file is included as one field in the settings.'''
-        project_reader = DataReader(self.data_path, self.config_manager, self.project_settings)
-        return project_reader.load_and_process_data()
-
-    def load_experts(self):
-        '''Load and process expert data.'''
-        '''The path of the source data file is included as one field in the settings.'''
-        expert_reader = DataReader(self.data_path, self.config_manager, self.expert_settings)
-        return expert_reader.load_and_process_data()
-
     def run_pipeline(self):
         '''Run the full data processing pipeline.'''
         print('Starting pipeline...')
 
         # Step 1: Load projects (considering mappings, etc).
-        projects_data = self.load_projects()
+        project_reader = DataReader(self.config_manager, self.project_settings)
+        projects_data = project_reader.load_data()
         print('Projects data loaded and processed.')
         self.data_saver.save_data(projects_data, self.file_projects_pipeline)
 
         # Step 2: Load experts (considering mappings, etc).
-        experts_data = self.load_experts()
+        expert_reader = DataReader(self.config_manager, self.expert_settings)
+        experts_data = expert_reader.load_data()
         print('Experts data loaded and processed.')
         self.data_saver.save_data(experts_data, self.file_experts_pipeline)
 
