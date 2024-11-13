@@ -26,9 +26,9 @@ class ExpertProfiler:
         self.base_url = base_url
         self.hf_token = hf_token
 
-    def query_openalex_by_name(full_name):
+    def query_openalex_by_name(self, full_name):
         # constructs the url for the authors endpoint in the openalex api
-        url = f"{BASE_URL}/authors"
+        url = f"{self.base_url}/authors"
         # sets the search parameters with the author's full name
         params = {"search": full_name}
         # sends a get request to the api with the url and search parameters
@@ -44,9 +44,9 @@ class ExpertProfiler:
         # returns none if there was no successful response or no results
         return None
 
-    def query_openalex_by_orcid(orcid):
+    def query_openalex_by_orcid(self, orcid):
         # constructs the url for the specific author based on their orcid
-        url = f"{BASE_URL}/authors/https://orcid.org/{orcid}"
+        url = f"{self.base_url}/authors/https://orcid.org/{orcid}"
         # sends a get request to the api with the author url
         response = requests.get(url)
         # checks if the request was successful
@@ -56,9 +56,9 @@ class ExpertProfiler:
         # returns none if there was no successful response
         return None
     
-    def query_openalex_works(author_id):
+    def query_openalex_works(self, author_id):
         # constructs the url for the works endpoint in the openalex api
-        url = f"{BASE_URL}/works"
+        url = f"{self.base_url}/works"
         # sets the filter to retrieve works by the specified author id
         # sorts results by publication date in descending order
         # limits the results to 5 per page
@@ -72,19 +72,19 @@ class ExpertProfiler:
         # returns none if there was no successful response
         return None
     
-    def get_author_info(full_name=None, orcid=None):
+    def get_author_info(self, full_name=None, orcid=None):
         # checks if an orcid is provided
         if orcid:
             # queries openalex by orcid and returns the result
-            return query_openalex_by_orcid(orcid)
+            return self.query_openalex_by_orcid(orcid)
         # checks if a full name is provided if no orcid is given
         elif full_name:
             # queries openalex by full name and returns the result
-            return query_openalex_by_name(full_name)
+            return self.query_openalex_by_name(full_name)
         # returns none if neither orcid nor full name is provided
         return None
 
-    def extract_author_details(author_info):
+    def extract_author_details(self, author_info):
         # checks if author_info is none, indicating no data was returned
         if author_info is None:
             # returns a dictionary with empty or none values if no author information is available
@@ -101,7 +101,7 @@ class ExpertProfiler:
         # extracts the author id from the author_info object
         author_id = author_info.get("id", "").split("/")[-1]
         # queries openalex for works by the author using the author id
-        works_info = query_openalex_works(author_id)
+        works_info = self.query_openalex_works(author_id)
     
         # initializes lists and counters for details about the author's works
         recent_work_titles = []
@@ -146,7 +146,7 @@ class ExpertProfiler:
         # returns the overall completeness as a single percentage value
         return overall_completeness
 
-    def enrich_author_data(df, method="name"):
+    def enrich_author_data(self, df, method="name"):
         # initializes an empty list to store enriched author data
         enriched_data = []
         # iterates over each row in the dataframe
@@ -159,20 +159,20 @@ class ExpertProfiler:
             # retrieves author information based on the specified method
             if method == "orcid" and orcid:
                 # queries openalex using orcid if method is set to orcid
-                author_info = get_author_info(orcid=orcid)
+                author_info = self.get_author_info(orcid=orcid)
             elif method == "name" and full_name:
                 # queries openalex using full name if method is set to name
-                author_info = get_author_info(full_name=full_name)
+                author_info = self.get_author_info(full_name=full_name)
             elif method == "both":
                 # tries to retrieve author info by orcid first if method is set to both
                 if orcid:
-                    author_info = get_author_info(orcid=orcid)
+                    author_info = self.get_author_info(orcid=orcid)
                 # if orcid query fails, attempts retrieval by full name
                 if not author_info and full_name:
-                    author_info = get_author_info(full_name=full_name)
+                    author_info = self.get_author_info(full_name=full_name)
     
             # extracts details about the author using the author_info
-            author_details = extract_author_details(author_info)
+            author_details = self.extract_author_details(author_info)
     
             # ensures author_details is always a dictionary with consistent keys
             if author_details is None:
@@ -192,17 +192,17 @@ class ExpertProfiler:
         # converts the list of enriched author data into a dataframe and returns it
         return pd.DataFrame(enriched_data)
 
-    def compute_completeness_for_method(df, method):
+    def compute_completeness_for_method(self, df, method):
         # enriches the author data in the dataframe using the specified method
-        enriched_df = enrich_author_data(df, method=method)
+        enriched_df = self.enrich_author_data(df, method=method)
         # calculates the completeness percentage of the enriched dataframe
-        completeness_percentage = compute_completeness(enriched_df)
+        completeness_percentage = self.compute_completeness(enriched_df)
         # returns the completeness percentage and the enriched dataframe
         return completeness_percentage, enriched_df
 
-    def get_all_publications(author_id):
+    def get_all_publications(self, author_id):
         # constructs the url for the works endpoint in the openalex api
-        url = f"{BASE_URL}/works"
+        url = f"{self.base_url}/works"
         # sets the filter to retrieve all works by the specified author id with a limit of 200 per page
         params = {
             "filter": f"authorships.author.id:{author_id}",
@@ -235,17 +235,17 @@ class ExpertProfiler:
         # returns the list of all works retrieved
         return all_works
     
-    def get_author_publications(full_name=None, orcid=None):
+    def get_author_publications(self, full_name=None, orcid=None):
         # initializes author_info as none
         author_info = None
         # checks if an orcid is provided
         if orcid:
             # queries openalex by orcid
-            author_info = query_openalex_by_orcid(orcid)
+            author_info = self.query_openalex_by_orcid(orcid)
         # checks if a full name is provided if no orcid is given
         elif full_name:
             # queries openalex by full name
-            author_info = query_openalex_by_name(full_name)
+            author_info = self.query_openalex_by_name(full_name)
         
         # returns none and an empty list if no author information was found
         if author_info is None:
@@ -254,7 +254,7 @@ class ExpertProfiler:
         # extracts the author id from the author_info
         author_id = author_info.get("id", "").split("/")[-1]
         # retrieves all publications for the author using the author id
-        publications = get_all_publications(author_id)
+        publications = self.get_all_publications(author_id)
         
         # returns the author's display name (or the full name if display name is not available) and the publications list
         return author_info.get("display_name", full_name), publications
@@ -302,9 +302,9 @@ class ExpertProfiler:
             # returns 'unknown' in case of an exception
             return 'unknown'
 
-    def enrich_data_with_predicted_gender(df, api_key):
+    def enrich_data_with_predicted_gender(self, df, api_key):
         # applies the predict_gender_namsor function to each name in the 'Full Name:' column
-        df['Predicted Gender:'] = df['Full Name:'].apply(lambda name: predict_gender_namsor(name, api_key))
+        df['Predicted Gender:'] = df['Full Name:'].apply(lambda name: self.predict_gender_namsor(name, api_key))
         # returns the dataframe with the new 'Predicted Gender:' column
         return df
 
@@ -359,13 +359,13 @@ class ExpertProfiler:
         # returns 'unknown' if the input is invalid
         return 'Unknown'  # default label for invalid input
 
-    def classify_publications(author_file, output_folder):
+    def classify_publications(self, author_file, output_folder):
         # reads the author file into a dataframe
         df = pd.read_csv(author_file)
     
         # applies research phase and domain classification on each title in the dataframe
-        df['research_phase'] = df['title'].apply(classify_research_phase)
-        df['domain'] = df['title'].apply(classify_domain)
+        df['research_phase'] = df['title'].apply(self.classify_research_phase)
+        df['domain'] = df['title'].apply(self.classify_domain)
     
         # extracts author name from the filename for naming the output file
         author_name = os.path.basename(author_file).replace('.csv', '')
@@ -378,13 +378,13 @@ class ExpertProfiler:
         # prints a message confirming the processed file and saved location
         print(f"Processed {author_file}, saved to {output_path}")
     
-    def classify_all_publications(input_folder, output_folder):
+    def classify_all_publications(self, input_folder, output_folder):
         # iterates over each file in the input folder
         for author_file in os.listdir(input_folder):
             # checks if the file has a '.csv' extension
             if author_file.endswith('.csv'):
                 # processes the publication file and saves it to the output folder
-                classify_publications(os.path.join(input_folder, author_file), output_folder)
+                self.classify_publications(os.path.join(input_folder, author_file), output_folder)
 
     def compute_classification_statistics(output_folder):
         # initializes an empty dataframe to hold all data
@@ -447,12 +447,12 @@ class ExpertProfiler:
         else:
             return ''  # returns empty if input is not a valid string
 
-    def rank_mesh_terms_across_all(output_folder):
+    def rank_mesh_terms_across_all(self, output_folder):
         # loads the combined data from the output folder
-        combined_df = combine_data(output_folder)
+        combined_df = self.combine_data(output_folder)
         
         # extracts mesh terms as strings for tf-idf processing
-        combined_df['mesh_term'] = combined_df['mesh'].apply(lambda terms: extract_mesh_terms_string(terms))
+        combined_df['mesh_term'] = combined_df['mesh'].apply(lambda terms: self.extract_mesh_terms_string(terms))
         
         # filters out rows with empty mesh term strings for tf-idf
         valid_terms_df = combined_df[combined_df['mesh_term'].str.strip() != '']
