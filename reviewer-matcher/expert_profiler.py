@@ -11,7 +11,20 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 
 class ExpertProfiler:
-    BASE_URL = "https://api.openalex.org"
+    def __init__(self, data_path, api_key, base_url="https://api.openalex.org", hf_token=None):
+        """
+        Initialize the ExpertProfiler with a data path, API key, base URL, and optional Hugging Face token.
+
+        Args:
+            data_path (str): The path to the data folder.
+            api_key (str): The API key for accessing OpenAlex.
+            base_url (str): The base URL for the OpenAlex API.
+            hf_token (str, optional): Hugging Face API token for accessing private models.
+        """
+        self.data_path = data_path
+        self.api_key = api_key
+        self.base_url = base_url
+        self.hf_token = hf_token
 
     def query_openalex_by_name(full_name):
         # constructs the url for the authors endpoint in the openalex api
