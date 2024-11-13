@@ -1,3 +1,15 @@
+# necessary imports 
+import requests
+import pandas as pd
+import time
+import os
+import re
+from transformers import pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+import ast
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+
 class ExpertProfiler:
     BASE_URL = "https://api.openalex.org"
 
@@ -495,7 +507,7 @@ class ExpertProfiler:
         author_seniority.to_csv(output_path, index=False)
         print(f"Author seniority data saved to {output_path}")
 
-    def classify_publications(input_folder, output_folder):
+    def classify_mental_health(input_folder, output_folder):
         # loads the sciroshot model and tokenizer from hugging face
         model_name = "BSC-LT/sciroshot"
         tokenizer = AutoTokenizer.from_pretrained(model_name)
