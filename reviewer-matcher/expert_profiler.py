@@ -132,26 +132,14 @@ class ExpertProfiler:
         # returns the dictionary with the author's details
         return details
 
-    def compute_completeness(data):
-        # counts the number of non-null values in each column of the data
-        non_null_counts = data.notnull().sum()
-        # gets the total number of rows in the data
-        total_counts = len(data)
-        # calculates the percentage of completeness for each column
-        completeness_percentages = (non_null_counts / total_counts) * 100
-        # computes the average completeness across all columns
-        overall_completeness = completeness_percentages.mean()
-        # returns the overall completeness as a single percentage value
-        return overall_completeness
-
-    def enrich_author_data(self, df, method="name"):
+    def enrich_author_data(self, df, method="both"):
         # initializes an empty list to store enriched author data
         enriched_data = []
         # iterates over each row in the dataframe
         for index, row in df.iterrows():
             # retrieves the full name and orcid from the current row
-            full_name = row['Full Name:']
-            orcid = row['ORCID Number:']
+            full_name = row['Full Name']
+            orcid = row['orcid']
             author_info = None
     
             # retrieves author information based on the specified method
@@ -172,23 +160,23 @@ class ExpertProfiler:
             # extracts details about the author using the author_info
             author_details = self.extract_author_details(author_info)
     
-            # ensures author_details is always a dictionary with consistent keys
-            if author_details is None:
-                author_details = {
-                    "name": None,
-                    "orcid": None,
-                    "works_count": None,
-                    "cited_by_count": None,
-                    "recent_work_titles": [],
-                    "work_types": [],
-                    "areas_of_interest": []
-                }
-    
             # appends the enriched author details to the list
             enriched_data.append(author_details)
     
         # converts the list of enriched author data into a dataframe and returns it
         return pd.DataFrame(enriched_data)
+    
+    def compute_completeness(data):
+        # counts the number of non-null values in each column of the data
+        non_null_counts = data.notnull().sum()
+        # gets the total number of rows in the data
+        total_counts = len(data)
+        # calculates the percentage of completeness for each column
+        completeness_percentages = (non_null_counts / total_counts) * 100
+        # computes the average completeness across all columns
+        overall_completeness = completeness_percentages.mean()
+        # returns the overall completeness as a single percentage value
+        return overall_completeness
 
     def compute_completeness_for_method(self, df, method):
         # enriches the author data in the dataframe using the specified method
@@ -262,12 +250,10 @@ class ExpertProfiler:
         df = pd.DataFrame(publications)
         # adds a column for the author's name to the dataframe
         df['author_name'] = author_name
-        # ensures the directory in the save path exists, creating it if necessary
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         # saves the dataframe to a csv file at the specified save path without the index column
         df.to_csv(save_path, index=False)
         # prints a message indicating where the enriched data was saved
-        print(f"Enriched data saved to {save_path}.")
+        #print(f"Publication data saved to {save_path}.")
 
     def predict_gender_namsor(self, name, api_key):
         try:
@@ -301,42 +287,9 @@ class ExpertProfiler:
 
     def enrich_data_with_predicted_gender(self, df, api_key):
         # applies the predict_gender_namsor function to each name in the 'Full Name:' column
-        df['Predicted Gender:'] = df['Full Name:'].apply(lambda name: self.predict_gender_namsor(name, api_key))
-        # returns the dataframe with the new 'Predicted Gender:' column
+        df['gender'] = df['name'].apply(lambda name: self.predict_gender_namsor(name, api_key))
+        # returns the dataframe with the new gender column
         return df
-
-    def save_gender_to_csv(df, folder_path):
-        # ensures the directory in the file path exists, creating it if necessary
-        os.makedirs(os.path.dirname(folder_path), exist_ok=True)
-        # saves the dataframe to a csv file at the constructed file path without the index column
-        df.to_csv(folder_path, index=False)
-        # prints a message indicating where the enriched data was saved
-        print(f"Enriched data saved to {folder_path}.")
-    
-    def calculate_gender_metrics(y_true, y_pred):
-        # creates a dataframe with actual and predicted values
-        results = pd.DataFrame({'Actual': y_true, 'Predicted': y_pred})
-    
-        # calculates the accuracy as the mean of correct predictions
-        accuracy = (results['Actual'] == results['Predicted']).mean()
-    
-        # calculates true positives where both predicted and actual are 'male'
-        tp = ((results['Predicted'] == 'male') & (results['Actual'] == 'male')).sum()
-        # calculates false positives where predicted is 'male' but actual is 'female'
-        fp = ((results['Predicted'] == 'male') & (results['Actual'] == 'female')).sum()
-        # calculates precision as tp divided by (tp + fp), handles division by zero
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-    
-        # calculates false negatives where predicted is 'female' but actual is 'male'
-        fn = ((results['Predicted'] == 'female') & (results['Actual'] == 'male')).sum()
-        # calculates recall as tp divided by (tp + fn), handles division by zero
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-
-        # calculates f1 score as the harmonic mean of precision and recall, handles division by zero
-        f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-    
-        # returns the calculated accuracy, precision, recall, and f1 score
-        return accuracy, precision, recall, f1
 
     def classify_research_phase(text):
         research_phase_classifier = pipeline("text-classification", model="SIRIS-Lab/batracio5")
@@ -367,19 +320,17 @@ class ExpertProfiler:
         # extracts author name from the filename for naming the output file
         author_name = os.path.basename(author_file).replace('.csv', '')
         # sets the path for saving the classified output
-        output_path = os.path.join(output_folder, f"{author_name}_classified.csv")
-        # ensures the output directory exists, creating it if necessary
-        os.makedirs(output_folder, exist_ok=True)
+        output_path = os.path.join(output_folder, f"{author_name}_publications_classified.csv")
         # saves the classified dataframe to the output path
         df.to_csv(output_path, index=False)
         # prints a message confirming the processed file and saved location
-        print(f"Processed {author_file}, saved to {output_path}")
+        #print(f"Classified publications for {author_file}, saved to {output_path}")
     
     def classify_all_publications(self, input_folder, output_folder):
         # iterates over each file in the input folder
         for author_file in os.listdir(input_folder):
-            # checks if the file has a '.csv' extension
-            if author_file.endswith('.csv'):
+            # checks if the file has the correct extension
+            if author_file.endswith('_publications_classified.csv'):
                 # processes the publication file and saves it to the output folder
                 self.classify_publications(os.path.join(input_folder, author_file), output_folder)
 
@@ -389,8 +340,8 @@ class ExpertProfiler:
         
         # iterates over each classified file in the output folder
         for classified_file in os.listdir(output_folder):
-            # checks if the file has a '.csv' extension
-            if classified_file.endswith('.csv'):
+            # checks if the file has the correct extension
+            if classified_file.endswith('_publications_classified.csv'):
                 # reads each classified file and appends its data to the all_data dataframe
                 df = pd.read_csv(os.path.join(output_folder, classified_file))
                 all_data = pd.concat([all_data, df], ignore_index=True)
@@ -409,8 +360,8 @@ class ExpertProfiler:
         
         # iterates over each file in the output folder
         for file in os.listdir(output_folder):
-            # checks if the file ends with '_classified.csv'
-            if file.endswith('_classified.csv'):
+            # checks if the file ends with the correct extension 
+            if file.endswith('_publications_classified.csv'):
                 # reads the CSV file into a dataframe
                 df = pd.read_csv(os.path.join(output_folder, file))
                 # appends the dataframe to the list
@@ -484,7 +435,7 @@ class ExpertProfiler:
         
         # iterates over all csv files in the input folder
         for author_file in os.listdir(input_folder):
-            if author_file.endswith('.csv'):
+            if author_file.endswith('_publications_classified.csv'):
                 # reads the author file into a dataframe
                 df = pd.read_csv(os.path.join(input_folder, author_file))
                 # extracts the author name from the file name
@@ -540,7 +491,7 @@ class ExpertProfiler:
     
         # processes all publication files in the input folder
         for author_file in os.listdir(input_folder):
-            if author_file.endswith('.csv'):  # change this if files have a different suffix
+            if author_file.endswith('_publications_classified.csv'): 
                 # loads the author's publication file into a dataframe
                 df = pd.read_csv(os.path.join(input_folder, author_file))
                 # checks if the 'title' column exists
@@ -552,8 +503,8 @@ class ExpertProfiler:
                 df['mental_health_class'] = df['title'].apply(classify_title)
                 
                 # saves the results to the output folder
-                author_name = os.path.basename(author_file).replace('.csv', '')
-                output_path = os.path.join(output_folder, f"{author_name}_mental_health.csv")
+                author_name = os.path.basename(author_file).replace('_classified.csv', '')
+                output_path = os.path.join(output_folder, f"{author_name}_determined.csv")
                 os.makedirs(output_folder, exist_ok=True)
                 df.to_csv(output_path, index=False)
-                print(f"Processed {author_file}, saved to {output_path}")
+                #print(f"Determined publications for {author_file}, saved to {output_path}")
