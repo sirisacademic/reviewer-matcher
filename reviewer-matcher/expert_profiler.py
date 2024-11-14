@@ -103,9 +103,7 @@ class ExpertProfiler:
     
         # initializes lists and counters for details about the author's works
         recent_work_titles = []
-        open_access_count = 0
         work_types = []
-        institutions = []
         
         # checks if works information was retrieved and contains results
         if works_info and "results" in works_info:
@@ -166,7 +164,7 @@ class ExpertProfiler:
         # converts the list of enriched author data into a dataframe and returns it
         return pd.DataFrame(enriched_data)
     
-    def compute_completeness(data):
+    def compute_completeness(self, data):
         # counts the number of non-null values in each column of the data
         non_null_counts = data.notnull().sum()
         # gets the total number of rows in the data
@@ -185,6 +183,42 @@ class ExpertProfiler:
         completeness_percentage = self.compute_completeness(enriched_df)
         # returns the completeness percentage and the enriched dataframe
         return completeness_percentage, enriched_df
+    
+    def predict_gender_namsor(self, name, api_key):
+        try:
+            # removes titles and honorifics from the name using regular expressions
+            titles = ['Dr', 'Prof', 'Prof. ', 'Professor', 'Mr', 'Ms', 'Mrs', 'Miss']
+            pattern = re.compile(r'\b(?:' + '|'.join(re.escape(title) for title in titles) + r')\.?\b', re.IGNORECASE)
+            name = pattern.sub('', name).strip()
+            
+            # splits the name into first and last names
+            first_name, last_name = name.split()[0], name.split()[-1] 
+            # constructs the url for the namsor api with the first and last names
+            url = f"https://v2.namsor.com/NamSorAPIv2/api2/json/gender/{first_name}/{last_name}"
+            # sets the api key in the headers
+            headers = {'X-API-KEY': self.api_key}
+            # sends a get request to the namsor api
+            response = requests.get(url, headers=headers)
+            
+            # checks if the response is successful
+            if response.status_code == 200:
+                # parses the json response and retrieves the likely gender
+                result = response.json()
+                return result.get('likelyGender', 'unknown')
+            else:
+                # returns 'unknown' if the request was not successful
+                return 'unknown'
+        except Exception as e:
+            # handles any exceptions and prints an error message
+            print(f"Error processing name '{name}': {e}")
+            # returns 'unknown' in case of an exception
+            return 'unknown'
+
+    def enrich_data_with_predicted_gender(self, df, api_key):
+        # applies the predict_gender_namsor function to each name in the 'Full Name:' column
+        df['gender'] = df['name'].apply(lambda name: self.predict_gender_namsor(name, api_key))
+        # returns the dataframe with the new gender column
+        return df
 
     def get_all_publications(self, author_id):
         # constructs the url for the works endpoint in the openalex api
@@ -245,125 +279,55 @@ class ExpertProfiler:
         # returns the author's display name (or the full name if display name is not available) and the publications list
         return author_info.get("display_name", full_name), publications
     
-    def save_publications_to_csv(author_name, publications, save_path):
-        # creates a dataframe from the list of publications
-        df = pd.DataFrame(publications)
-        # adds a column for the author's name to the dataframe
-        df['author_name'] = author_name
-        # saves the dataframe to a csv file at the specified save path without the index column
-        df.to_csv(save_path, index=False)
-        # prints a message indicating where the enriched data was saved
-        #print(f"Publication data saved to {save_path}.")
+    def save_publications_to_csv(self, df, save_path):
+        for index, row in df.iterrows():
+            full_name = row.get('name')
+            orcid = row.get('orcid')
+            author_name, publications = self.get_author_publications(full_name=full_name, orcid=orcid)
 
-    def predict_gender_namsor(self, name, api_key):
-        try:
-            # removes titles and honorifics from the name using regular expressions
-            titles = ['Dr', 'Prof', 'Prof. ', 'Professor', 'Mr', 'Ms', 'Mrs', 'Miss']
-            pattern = re.compile(r'\b(?:' + '|'.join(re.escape(title) for title in titles) + r')\.?\b', re.IGNORECASE)
-            name = pattern.sub('', name).strip()
-            
-            # splits the name into first and last names
-            first_name, last_name = name.split()[0], name.split()[-1] 
-            # constructs the url for the namsor api with the first and last names
-            url = f"https://v2.namsor.com/NamSorAPIv2/api2/json/gender/{first_name}/{last_name}"
-            # sets the api key in the headers
-            headers = {'X-API-KEY': self.api_key}
-            # sends a get request to the namsor api
-            response = requests.get(url, headers=headers)
-            
-            # checks if the response is successful
-            if response.status_code == 200:
-                # parses the json response and retrieves the likely gender
-                result = response.json()
-                return result.get('likelyGender', 'unknown')
+            if author_name and publications:
+                # construct file path for each reviewer
+                filename = f"{author_name.replace(' ', '_').lower()}_publications.csv"
+                file_path = os.path.join(save_path, filename)
+
+                # save publications directly to csv
+                df = pd.DataFrame(publications)
+                df['author_name'] = author_name
+                df.to_csv(file_path, index=False)
+
+                #print(f"Publications for {author_name} saved to {file_path}.")
             else:
-                # returns 'unknown' if the request was not successful
-                return 'unknown'
-        except Exception as e:
-            # handles any exceptions and prints an error message
-            print(f"Error processing name '{name}': {e}")
-            # returns 'unknown' in case of an exception
-            return 'unknown'
+                print(f"No publications found for {full_name}.")
 
-    def enrich_data_with_predicted_gender(self, df, api_key):
-        # applies the predict_gender_namsor function to each name in the 'Full Name:' column
-        df['gender'] = df['name'].apply(lambda name: self.predict_gender_namsor(name, api_key))
-        # returns the dataframe with the new gender column
-        return df
+    def calculate_average_publications_per_author(self, publications_folder):
+        # initialize an empty list to store publication counts for each author
+        publications_counts = []
 
-    def classify_research_phase(text):
-        research_phase_classifier = pipeline("text-classification", model="SIRIS-Lab/batracio5")
-        # checks if text is a non-empty string
-        if isinstance(text, str) and text.strip():
-            # uses the research_phase_classifier to get the label of the text
-            return research_phase_classifier(text)[0]['label']
-        # returns 'unknown' if the input is invalid
-        return 'Unknown'  # default label for invalid input
+        # iterate over each file in the publications folder
+        for file in os.listdir(publications_folder):
+            # check if the file ends with '.csv'
+            if file.endswith('_publications.csv'):
+                # read the csv file into a dataframe
+                df = pd.read_csv(os.path.join(publications_folder, file))
+                # count the number of publications (rows) in the dataframe
+                num_publications = len(df)
+                # add the publication count to the list
+                publications_counts.append(num_publications)
 
-    def classify_domain(text):
-        domain_classifier = pipeline("text-classification", model="SIRIS-Lab/biomedicine-classifier")
-        # checks if text is a non-empty string
-        if isinstance(text, str) and text.strip():
-            # uses the domain_classifier to get the label of the text
-            return domain_classifier(text)[0]['label']
-        # returns 'unknown' if the input is invalid
-        return 'Unknown'  # default label for invalid input
+        # calculate the average number of publications if the list is not empty, otherwise set to 0
+        average_publications = sum(publications_counts) / len(publications_counts) if publications_counts else 0
+        return average_publications
 
-    def classify_publications(self, author_file, output_folder):
-        # reads the author file into a dataframe
-        df = pd.read_csv(author_file)
-    
-        # applies research phase and domain classification on each title in the dataframe
-        df['research_phase'] = df['title'].apply(self.classify_research_phase)
-        df['domain'] = df['title'].apply(self.classify_domain)
-    
-        # extracts author name from the filename for naming the output file
-        author_name = os.path.basename(author_file).replace('.csv', '')
-        # sets the path for saving the classified output
-        output_path = os.path.join(output_folder, f"{author_name}_publications_classified.csv")
-        # saves the classified dataframe to the output path
-        df.to_csv(output_path, index=False)
-        # prints a message confirming the processed file and saved location
-        #print(f"Classified publications for {author_file}, saved to {output_path}")
-    
-    def classify_all_publications(self, input_folder, output_folder):
-        # iterates over each file in the input folder
-        for author_file in os.listdir(input_folder):
-            # checks if the file has the correct extension
-            if author_file.endswith('_publications_classified.csv'):
-                # processes the publication file and saves it to the output folder
-                self.classify_publications(os.path.join(input_folder, author_file), output_folder)
-
-    def compute_classification_statistics(output_folder):
-        # initializes an empty dataframe to hold all data
-        all_data = pd.DataFrame()
-        
-        # iterates over each classified file in the output folder
-        for classified_file in os.listdir(output_folder):
-            # checks if the file has the correct extension
-            if classified_file.endswith('_publications_classified.csv'):
-                # reads each classified file and appends its data to the all_data dataframe
-                df = pd.read_csv(os.path.join(output_folder, classified_file))
-                all_data = pd.concat([all_data, df], ignore_index=True)
-        
-        # calculates the percentage of each research phase
-        research_phase_counts = all_data['research_phase'].value_counts(normalize=True) * 100
-        # calculates the percentage of each domain
-        domain_counts = all_data['domain'].value_counts(normalize=True) * 100
-        
-        # returns the calculated statistics for research phase and domain
-        return research_phase_counts, domain_counts
-
-    def combine_data(output_folder):
+    def combine_data(self, input_folder):
         # initializes an empty list to store dataframes
         data_frames = []
         
         # iterates over each file in the output folder
-        for file in os.listdir(output_folder):
+        for file in os.listdir(input_folder):
             # checks if the file ends with the correct extension 
-            if file.endswith('_publications_classified.csv'):
+            if file.endswith('.csv'):
                 # reads the CSV file into a dataframe
-                df = pd.read_csv(os.path.join(output_folder, file))
+                df = pd.read_csv(os.path.join(input_folder, file))
                 # appends the dataframe to the list
                 data_frames.append(df)
         
@@ -372,7 +336,108 @@ class ExpertProfiler:
         # returns the combined dataframe
         return combined_df
 
-    def extract_mesh_terms_string(mesh_terms):
+    def classify_research_phase(self, text):
+        research_phase_classifier = pipeline("text-classification", model="SIRIS-Lab/batracio5")
+        # check if text is a non-empty string
+        if isinstance(text, str) and text.strip():
+            # use the research phase classifier to get the label of the text
+            return research_phase_classifier(text)[0]['label']
+        return 'Unknown'  # default label for invalid input
+    
+    def classify_publications_by_research_phase(self, author_file, output_folder):
+        # reads the author file into a dataframe
+        df = pd.read_csv(author_file)
+        
+        # apply research phase classification
+        df['research_phase'] = df['title'].apply(self.classify_research_phase)
+        
+        # save to output folder with updated filename
+        author_name = os.path.basename(author_file).replace('_publications.csv', '')
+        output_path = os.path.join(output_folder, f"{author_name}_research_phase.csv")
+        df.to_csv(output_path, index=False)
+        #print(f"Research phase classified for {author_file}, saved to {output_path}")
+
+    def classify_all_publications_by_research_phase(self, input_folder, output_folder):
+        # iterates over each file in the input folder and classifies by research phase
+        for author_file in os.listdir(input_folder):
+            if author_file.endswith('_publications.csv'):
+                full_path = os.path.join(input_folder, author_file)
+                self.classify_publications_by_research_phase(full_path, output_folder)
+    
+    def classify_domain(self, text):
+        domain_classifier = pipeline("text-classification", model="SIRIS-Lab/biomedicine-classifier")
+        # check if text is a non-empty string
+        if isinstance(text, str) and text.strip():
+            # use the domain classifier to get the label of the text
+            return domain_classifier(text)[0]['label']
+        return 'Unknown'  # default label for invalid input
+
+    def classify_publications_by_domain(self, author_file, output_folder):
+        # reads the author file into a dataframe
+        df = pd.read_csv(author_file)
+        
+        # apply domain classification
+        df['domain'] = df['title'].apply(self.classify_domain)
+        
+        # save to output folder with updated filename
+        author_name = os.path.basename(author_file).replace('_research_phase.csv', '')
+        output_path = os.path.join(output_folder, f"{author_name}_domain.csv")
+        df.to_csv(output_path, index=False)
+        #print(f"Domain classified for {author_file}, saved to {output_path}")
+
+    def classify_all_publications_by_domain(self, input_folder, output_folder):
+        # iterates over each file in the input folder and classifies by domain
+        for author_file in os.listdir(input_folder):
+            if author_file.endswith('_research_phase.csv'):
+                full_path = os.path.join(input_folder, author_file)
+                self.classify_publications_by_domain(full_path, output_folder)
+
+    def classify_mental_health(self, text):
+        # loads the sciroshot model and tokenizer from hugging face
+        model_name = "BSC-LT/sciroshot"
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+        # checks if the title is a valid string
+        if not isinstance(text, str) or text.strip() == "":
+            return -1  # returns -1 for empty or non-string titles
+
+        # tokenizes the title and prepares the input for the model
+        inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
+        
+        # uses the model to predict the class of the title
+        with torch.no_grad():
+            outputs = model(**inputs)
+        
+        # applies softmax to get probabilities and selects the predicted class
+        probabilities = torch.nn.functional.softmax(outputs.logits, dim=-1)
+        predicted_class = torch.argmax(probabilities).item()
+        
+        return predicted_class
+
+    def classify_all_publications_by_mental_health(self, input_folder, output_folder):
+        # iterates over each file in the input folder
+        for author_file in os.listdir(input_folder):
+            if author_file.endswith('_domain.csv'):
+                # loads the author's publication file into a dataframe
+                df = pd.read_csv(os.path.join(input_folder, author_file))
+
+                # checks if the 'title' column exists
+                if 'title' not in df.columns:
+                    print(f"Error: 'title' column not found in {author_file}")
+                    continue
+
+                # applies the mental health classification to each title in the dataframe
+                df['mental_health'] = df['title'].apply(self.classify_mental_health)
+
+                # saves the results to the output folder
+                author_name = os.path.basename(author_file).replace('_domain.csv', '')
+                output_path = os.path.join(output_folder, f"{author_name}_mental_health.csv")
+                os.makedirs(output_folder, exist_ok=True)
+                df.to_csv(output_path, index=False)
+                #print(f"Determined mental health for {author_file}, saved to {output_path}")
+
+    def extract_mesh_terms_string(self, mesh_terms):
         # checks if the input is a non-empty string
         if isinstance(mesh_terms, str) and mesh_terms.strip():
             try:
@@ -429,17 +494,17 @@ class ExpertProfiler:
         # returns the ranked dataframe of terms and their tf-idf scores
         return ranked_terms_df
 
-    def calculate_author_seniority(input_folder, output_folder):
+    def calculate_reviewer_seniority(self, input_folder):
         # initializes a list to store results
         author_seniority_list = []
         
         # iterates over all csv files in the input folder
         for author_file in os.listdir(input_folder):
-            if author_file.endswith('_publications_classified.csv'):
+            if author_file.endswith('_mental_health.csv'):
                 # reads the author file into a dataframe
                 df = pd.read_csv(os.path.join(input_folder, author_file))
                 # extracts the author name from the file name
-                author_name = os.path.basename(author_file).replace('.csv', '')
+                author_name = os.path.basename(author_file).replace('_mental_health.csv', '')
                 
                 # calculates total publications for the author
                 total_publications = len(df)
@@ -461,50 +526,4 @@ class ExpertProfiler:
         
         # converts the results list into a dataframe
         author_seniority = pd.DataFrame(author_seniority_list)
-        
-        # ensures the output folder exists and saves the results as a csv file
-        os.makedirs(output_folder, exist_ok=True)
-        output_path = os.path.join(output_folder, 'author_seniority.csv')
-        author_seniority.to_csv(output_path, index=False)
-        print(f"Author seniority data saved to {output_path}")
-
-    def classify_mental_health(input_folder, output_folder):
-        # loads the sciroshot model and tokenizer from hugging face
-        model_name = "BSC-LT/sciroshot"
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = AutoModelForSequenceClassification.from_pretrained(model_name)
-        
-        # function to classify a single title
-        def classify_title(title):
-            # checks if the title is a valid string
-            if not isinstance(title, str) or title.strip() == "":
-                return -1  # returns -1 for empty or non-string titles
-            # tokenizes the title and prepares the input for the model
-            inputs = tokenizer(title, return_tensors="pt", truncation=True, padding=True, max_length=512)
-            # uses the model to predict the class of the title
-            with torch.no_grad():
-                outputs = model(**inputs)
-            # applies softmax to get probabilities and selects the predicted class
-            probabilities = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            predicted_class = torch.argmax(probabilities).item()
-            return predicted_class
-    
-        # processes all publication files in the input folder
-        for author_file in os.listdir(input_folder):
-            if author_file.endswith('_publications_classified.csv'): 
-                # loads the author's publication file into a dataframe
-                df = pd.read_csv(os.path.join(input_folder, author_file))
-                # checks if the 'title' column exists
-                if 'title' not in df.columns:
-                    print(f"Error: 'title' column not found in {author_file}")
-                    continue
-    
-                # applies the classification to each title in the dataframe
-                df['mental_health_class'] = df['title'].apply(classify_title)
-                
-                # saves the results to the output folder
-                author_name = os.path.basename(author_file).replace('_classified.csv', '')
-                output_path = os.path.join(output_folder, f"{author_name}_determined.csv")
-                os.makedirs(output_folder, exist_ok=True)
-                df.to_csv(output_path, index=False)
-                #print(f"Determined publications for {author_file}, saved to {output_path}")
+        return author_seniority
