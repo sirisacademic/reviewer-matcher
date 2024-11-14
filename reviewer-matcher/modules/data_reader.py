@@ -1,6 +1,8 @@
+### data_reader.py
+
 import os
 import pandas as pd
-from utils.functions_read_data import replace_values, replace_separators, clean_header_column, column_letter_to_index
+from utils.functions_read_data import load_file, replace_values, replace_separators, clean_header_column, column_letter_to_index
 
 class DataReader:
     def __init__(self, config_manager, settings_manager):
@@ -24,7 +26,7 @@ class DataReader:
 
     def load_data(self):
         '''Load and process projects/expert data with specific transformations.'''
-        raw_data = self.load_file()
+        raw_data = load_file(self.input_path, self.file_type)
         self.read_data(raw_data)
         self.extract_multi_column_values(raw_data)
         self.apply_value_mappings()
@@ -32,7 +34,7 @@ class DataReader:
         return self.data
 
     def _get_header_values(self, raw_data):
-        """Get a list of column headers or values from a specific row depending on position_first_data_row."""
+        '''Get a list of column headers or values from a specific row depending on position_first_data_row.'''
         if self.position_header_row == 0:
             # If first_data_row is 0, return the column names.
             return list(raw_data.columns)
@@ -84,31 +86,6 @@ class DataReader:
         if self.id_column_name not in self.data.columns:
             self.data.insert(0, self.id_column_name, range(1, len(self.data) + 1))
 
-    def load_file(self):
-        '''Load data from a specified file, supporting Excel, TSV, Pickle, and Parquet formats.'''
-        # Guess file type if not explicitly provided (in this case, self.file_type is None).
-        if not self.file_type:
-            extension = os.path.splitext(self.input_file)[-1].lower().strip('.')
-            if extension in ['xlsx', 'xls']:
-                file_type = 'excel'
-            elif extension == 'tsv':
-                file_type = 'tsv'
-            elif extension == 'pkl':
-                file_type = 'pickle'
-            elif extension == 'parquet':
-                file_type = 'parquet'
-            else:
-                raise ValueError(f'Unsupported file extension: {extension}')
-        # Load data based on file type
-        if file_type == 'excel':
-            return pd.read_excel(self.input_path).fillna('')
-        elif file_type == 'tsv':
-            return pd.read_csv(self.input_path, sep='\t').fillna('')
-        elif file_type == 'pickle':
-            return pd.read_pickle(self.input_path).fillna('')
-        elif file_type == 'parquet':
-            return pd.read_parquet(self.input_path).fillna('')
-        else:
-            raise ValueError(f'Unsupported file type: {file_type}')
+
             
 

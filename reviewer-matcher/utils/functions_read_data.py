@@ -1,8 +1,10 @@
 # functions_read_data.py
 
-import json                        # For reading JSON configuration files
-import re                          # For cleaning column names with regular expressions
-import string                      # For whitespace and punctuation handling
+import os
+import json
+import re
+import string
+import pandas as pd
 
 # Function to get settings corresponding to a call.
 def get_settings_by_call(json_file_path):
@@ -11,6 +13,23 @@ def get_settings_by_call(json_file_path):
   with open(json_file_path, 'r') as f:
       settings_data = json.load(f)
   return settings_data
+
+# Load data from a specified file, supporting multiple formats
+def load_file(file_path, file_type=None):
+#---------------------------------
+  """Load data from a specified file, supporting Excel, TSV, Pickle, and Parquet formats."""
+  # Determine file type based on the extension if file_type is not provided
+  file_type = file_type or os.path.splitext(file_path)[-1].lower().strip('.')
+  if file_type in ['excel', 'xlsx', 'xls']:
+    return pd.read_excel(file_path).fillna('')
+  elif file_type == 'tsv':
+    return pd.read_csv(file_path, sep='\t').fillna('')
+  elif file_type in ['pkl', 'pickle']:
+    return pd.read_pickle(file_path).fillna('')
+  elif file_type == 'parquet':
+    return pd.read_parquet(file_path).fillna('')
+  else:
+    raise ValueError(f'Unsupported file type: {file_type}')
 
 """
 # Version for Google Sheets.
@@ -26,7 +45,7 @@ def column_letter_to_index(letter):
 #---------------------------------
   index = 0
   for char in letter:
-      index = index * 26 + (ord(char.upper()) - ord('A') + 1)
+    index = index * 26 + (ord(char.upper()) - ord('A') + 1)
   return index - 1
 
 # Function used to replace ampersands and other problematic characters in spreadsheet column names.

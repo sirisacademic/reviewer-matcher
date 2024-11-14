@@ -11,3 +11,6 @@ class SettingsManager:
     def get(self, key, default=None):
         return self.settings.get(key, default)
 
+    def set(self, key, value):
+        self.settings[key] = value
+
