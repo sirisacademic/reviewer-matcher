@@ -13,18 +13,16 @@ import torch
 class ExpertProfiler:
     def __init__(self, data_path, api_key, base_url="https://api.openalex.org"):
         """
-        Initialize the ExpertProfiler with a data path, API key, Hugging Face token, and base URL.
-
-        Args:
-            data_path (str): The path to the data folder.
-            api_key (str): The API key for accessing OpenAlex.
-            base_url (str): The base URL for the OpenAlex API.
+        Initialize the ExpertProfiler with a data path, API key, and base URL for OpenAlex.
         """
         self.data_path = data_path
         self.api_key = api_key
         self.base_url = base_url
 
     def query_openalex_by_name(self, full_name):
+        """
+        Query OpenAlex by author full name.
+        """
         # constructs the url for the authors endpoint in the openalex api
         url = f"{self.base_url}/authors"
         # sets the search parameters with the author's full name
@@ -43,6 +41,9 @@ class ExpertProfiler:
         return None
 
     def query_openalex_by_orcid(self, orcid):
+        """
+        Query OpenAlex by author's ORCID.
+        """
         # constructs the url for the specific author based on their orcid
         url = f"{self.base_url}/authors/https://orcid.org/{orcid}"
         # sends a get request to the api with the author url
@@ -55,6 +56,9 @@ class ExpertProfiler:
         return None
     
     def query_openalex_works(self, author_id):
+        """
+        Query OpenAlex works by author ID.
+        """
         # constructs the url for the works endpoint in the openalex api
         url = f"{self.base_url}/works"
         # sets the filter to retrieve works by the specified author id
@@ -71,6 +75,9 @@ class ExpertProfiler:
         return None
     
     def get_author_info(self, full_name=None, orcid=None):
+        """
+        Get author information by full name or ORCID or both.
+        """
         # checks if an orcid is provided
         if orcid:
             # queries openalex by orcid and returns the result
@@ -83,6 +90,9 @@ class ExpertProfiler:
         return None
 
     def extract_author_details(self, author_info):
+        """
+        Extract detailed author information from OpenAlex data.
+        """
         # checks if author_info is none, indicating no data was returned
         if author_info is None:
             # returns a dictionary with empty or none values if no author information is available
@@ -131,6 +141,9 @@ class ExpertProfiler:
         return details
 
     def enrich_author_data(self, df, method="both"):
+        """
+        Enrich author data by querying OpenAlex API.
+        """
         # initializes an empty list to store enriched author data
         enriched_data = []
         # iterates over each row in the dataframe
@@ -165,6 +178,9 @@ class ExpertProfiler:
         return pd.DataFrame(enriched_data)
     
     def compute_completeness(self, data):
+        """
+        Compute completeness of the dataframe.
+        """
         # counts the number of non-null values in each column of the data
         non_null_counts = data.notnull().sum()
         # gets the total number of rows in the data
@@ -177,6 +193,9 @@ class ExpertProfiler:
         return overall_completeness
 
     def compute_completeness_for_method(self, df, method):
+        """
+        Compute completeness after enriching author data.
+        """
         # enriches the author data in the dataframe using the specified method
         enriched_df = self.enrich_author_data(df, method=method)
         # calculates the completeness percentage of the enriched dataframe
@@ -185,6 +204,9 @@ class ExpertProfiler:
         return completeness_percentage, enriched_df
     
     def predict_gender_namsor(self, name, api_key):
+        """
+        Predict gender based on a name using the NamSor API.
+        """
         try:
             # removes titles and honorifics from the name using regular expressions
             titles = ['Dr', 'Prof', 'Prof. ', 'Professor', 'Mr', 'Ms', 'Mrs', 'Miss']
@@ -215,12 +237,18 @@ class ExpertProfiler:
             return 'unknown'
 
     def enrich_data_with_predicted_gender(self, df, api_key):
+        """
+        Enrich the dataframe with predicted gender based on names using NamSor API.
+        """
         # applies the predict_gender_namsor function to each name in the 'Full Name:' column
         df['gender'] = df['name'].apply(lambda name: self.predict_gender_namsor(name, api_key))
         # returns the dataframe with the new gender column
         return df
 
     def get_all_publications(self, author_id):
+        """
+        Retrieve all publications for an author from the OpenAlex API, handling pagination.
+        """
         # constructs the url for the works endpoint in the openalex api
         url = f"{self.base_url}/works"
         # sets the filter to retrieve all works by the specified author id with a limit of 200 per page
@@ -256,6 +284,9 @@ class ExpertProfiler:
         return all_works
     
     def get_author_publications(self, full_name=None, orcid=None):
+        """
+        Retrieve an author's publications based on ORCID and if not successful, full name.
+        """
         # initializes author_info as none
         author_info = None
         # checks if an orcid is provided
@@ -280,6 +311,9 @@ class ExpertProfiler:
         return author_info.get("display_name", full_name), publications
     
     def save_publications_to_csv(self, df, save_path):
+        """
+        Save each author's publications to a CSV file.
+        """
         for index, row in df.iterrows():
             full_name = row.get('name')
             orcid = row.get('orcid')
@@ -300,6 +334,9 @@ class ExpertProfiler:
                 print(f"No publications found for {full_name}.")
 
     def calculate_average_publications_per_author(self, publications_folder):
+        """
+        Calculate the average number of publications per author based on saved CSV files.
+        """
         # initialize an empty list to store publication counts for each author
         publications_counts = []
 
@@ -319,6 +356,9 @@ class ExpertProfiler:
         return average_publications
 
     def combine_data(self, input_folder):
+        """
+        Combine all CSV files in a folder into a single dataframe.
+        """
         # initializes an empty list to store dataframes
         data_frames = []
         
@@ -337,6 +377,9 @@ class ExpertProfiler:
         return combined_df
 
     def classify_research_phase(self, text):
+        """
+        Classify the research phase of a given text using a pretrained model.
+        """
         research_phase_classifier = pipeline("text-classification", model="SIRIS-Lab/batracio5")
         # check if text is a non-empty string
         if isinstance(text, str) and text.strip():
@@ -345,6 +388,9 @@ class ExpertProfiler:
         return 'Unknown'  # default label for invalid input
     
     def classify_publications_by_research_phase(self, author_file, output_folder):
+        """
+        Classify the research phase for publications in a CSV file and save the results.
+        """
         # reads the author file into a dataframe
         df = pd.read_csv(author_file)
         
@@ -358,6 +404,9 @@ class ExpertProfiler:
         #print(f"Research phase classified for {author_file}, saved to {output_path}")
 
     def classify_all_publications_by_research_phase(self, input_folder, output_folder):
+        """
+        Classify research phase for all publication files in a folder.
+        """
         # iterates over each file in the input folder and classifies by research phase
         for author_file in os.listdir(input_folder):
             if author_file.endswith('_publications.csv'):
@@ -365,6 +414,9 @@ class ExpertProfiler:
                 self.classify_publications_by_research_phase(full_path, output_folder)
     
     def classify_domain(self, text):
+        """
+        Classify the domain of a given text using a pretrained model.
+        """
         domain_classifier = pipeline("text-classification", model="SIRIS-Lab/biomedicine-classifier")
         # check if text is a non-empty string
         if isinstance(text, str) and text.strip():
@@ -373,6 +425,9 @@ class ExpertProfiler:
         return 'Unknown'  # default label for invalid input
 
     def classify_publications_by_domain(self, author_file, output_folder):
+        """
+        Classify the domain for publications in a CSV file and save the results.
+        """
         # reads the author file into a dataframe
         df = pd.read_csv(author_file)
         
@@ -386,6 +441,9 @@ class ExpertProfiler:
         #print(f"Domain classified for {author_file}, saved to {output_path}")
 
     def classify_all_publications_by_domain(self, input_folder, output_folder):
+        """
+        Classify domain for all publication files in a folder.
+        """
         # iterates over each file in the input folder and classifies by domain
         for author_file in os.listdir(input_folder):
             if author_file.endswith('_research_phase.csv'):
@@ -393,6 +451,9 @@ class ExpertProfiler:
                 self.classify_publications_by_domain(full_path, output_folder)
 
     def classify_mental_health(self, text):
+        """
+        Classify whether a publication is related to mental health using a pretrained model.
+        """
         # loads the sciroshot model and tokenizer from hugging face
         model_name = "BSC-LT/sciroshot"
         tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -416,6 +477,9 @@ class ExpertProfiler:
         return predicted_class
 
     def classify_all_publications_by_mental_health(self, input_folder, output_folder):
+        """
+        Classify mental health-related publications for all files in a folder.
+        """
         # iterates over each file in the input folder
         for author_file in os.listdir(input_folder):
             if author_file.endswith('_domain.csv'):
@@ -438,6 +502,9 @@ class ExpertProfiler:
                 #print(f"Determined mental health for {author_file}, saved to {output_path}")
 
     def extract_mesh_terms_string(self, mesh_terms):
+        """
+        Extract and concatenate descriptor names from a string of MeSH terms.
+        """
         # checks if the input is a non-empty string
         if isinstance(mesh_terms, str) and mesh_terms.strip():
             try:
@@ -461,6 +528,9 @@ class ExpertProfiler:
             return ''  # returns empty if input is not a valid string
 
     def rank_mesh_terms_across_all(self, output_folder):
+        """
+        Rank MeSH terms based on their TF-IDF scores across all documents.
+        """
         # loads the combined data from the output folder
         combined_df = self.combine_data(output_folder)
         
@@ -495,6 +565,9 @@ class ExpertProfiler:
         return ranked_terms_df
 
     def calculate_reviewer_seniority(self, input_folder):
+        """
+        Calculate the seniority of reviewers based on their publications and citations.
+        """
         # initializes a list to store results
         author_seniority_list = []
         

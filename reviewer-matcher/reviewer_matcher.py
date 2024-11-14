@@ -10,6 +10,7 @@ from .panel_optimizer import PanelOptimizer
 
 import os
 import pandas as pd
+import warnings
 
 class ReviewerMatcher:
     def __init__(self):
@@ -109,6 +110,7 @@ class ReviewerMatcher:
         output_folder = "../intermediate_data/reviewer_mental_health"
 
         # classify mental health
+        warnings.filterwarnings("ignore")
         self.expert_profiler.classify_all_publications_by_mental_health(input_folder, output_folder)
 
         # combine data to display statistics 
