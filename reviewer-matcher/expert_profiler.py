@@ -6,6 +6,10 @@ import os
 import re
 import ast
 from datetime import datetime
+from transformers import pipeline
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 class ExpertProfiler:
     def __init__(self, data_path, api_key, base_url="https://api.openalex.org"):
@@ -125,7 +129,7 @@ class ExpertProfiler:
             "orcid": author_info.get("orcid"),
 
             # extracts topics of expertise from topics associated with the author
-            "topics_of_expertise": [topic.get("display_name") for topic in author_info.get("x_topics", [])] if author_info.get("x_topics") else [],
+            "topics_of_expertise": [topic.get("display_name") for topic in author_info.get("topics", [])] if author_info.get("topics") else [],
             
             # extracts approaches from concepts associated with the author
             "approaches": [concept.get("display_name") for concept in author_info.get("x_concepts", [])] if author_info.get("x_concepts") else [],
@@ -242,8 +246,96 @@ class ExpertProfiler:
         """
         # applies the predict_gender_namsor function to each name in the 'Full Name:' column
         df['gender'] = df['name'].apply(lambda name: self.predict_gender_namsor(name, api_key))
+
+        # reorder columns to place 'name', 'orcid', and 'gender' as the first three columns
+        columns = ['name', 'orcid', 'gender'] + [col for col in df.columns if col not in ['name', 'orcid', 'gender']]
+        df = df[columns]
+
         # returns the dataframe with the new gender column
         return df
+    
+    def classify_recent_works_research_phase(self, df):
+        """
+        Classify research phases of recent work titles for each author.
+        """
+        # check if recent_work_titles column exists
+        if 'recent_work_titles' not in df.columns:
+            print("Column 'recent_work_titles' not found in the input data.")
+            return df
+
+        # define a helper function to classify and consolidate research phases for recent works
+        def get_unique_research_phases(titles):
+            # check if titles is a list
+            if not isinstance(titles, list):
+                return 'Unknown'
+
+            # classify each title's research phase and store unique values
+            research_phases = set()
+            for title in titles:
+                phase = self.classify_research_phase(title)
+                research_phases.add(phase)
+
+            # join unique phases with a semicolon
+            return ';'.join(research_phases)
+
+        # apply the helper function to each row to create the 'research_phase' column
+        df['research_phase'] = df['recent_work_titles'].apply(get_unique_research_phases)
+
+        # create dummy columns for each unique research phase
+        research_phase_dummies = df['research_phase'].str.get_dummies(sep=';')
+
+        # concatenate the dummy columns to the df
+        df = pd.concat([df, research_phase_dummies], axis=1)
+
+        # reorder columns: make 'research_phase' the fourth column, followed by the dummy columns
+        columns_order = (
+            ['name', 'orcid', 'gender', 'research_phase'] +
+            research_phase_dummies.columns.tolist() +
+            [col for col in df.columns if col not in ['name', 'orcid', 'gender', 'research_phase'] + research_phase_dummies.columns.tolist()]
+        )
+        df = df[columns_order]
+
+        # return the modified df
+        return df
+
+    def add_topics_and_approaches_dummies(self, df):
+        """
+        Create dummy columns for 'topics_of_expertise' and 'approaches'.
+        """
+        # check if 'topics_of_expertise' and 'approaches' columns exist
+        if 'topics_of_expertise' not in df.columns or 'approaches' not in df.columns:
+            print("columns 'topics_of_expertise' or 'approaches' not found in the input data.")
+            return df
+    
+        # helper function to create dummies from a list
+        def create_dummies_from_list(column_data):
+            if isinstance(column_data, list):
+                return ';'.join(column_data)
+            return ''  # return empty string if not a list
+    
+        # apply the helper function
+        df['topics_of_expertise'] = df['topics_of_expertise'].apply(create_dummies_from_list)
+        df['approaches'] = df['approaches'].apply(create_dummies_from_list)
+    
+        # create dummy columns
+        topics_dummies = df['topics_of_expertise'].str.get_dummies(sep=';')
+        approaches_dummies = df['approaches'].str.get_dummies(sep=';')
+    
+        # create the desired column order
+        fixed_columns = [
+            'name', 'orcid', 'gender', 'research_phase', 
+            'Basic Research', 'Clinical Research', 'Mechanisms of Disease', 
+            'Public Health', 'Translational Research',  # these remain unchanged
+            'topics_of_expertise'  # topics_of_expertise column
+        ]
+    
+        # concatenate the topic dummy columns and approaches dummy columns
+        topics_approaches_df = pd.concat([df[fixed_columns], topics_dummies, df[['approaches']], approaches_dummies], axis=1)
+    
+        # finally, add 'recent_work_titles', 'works_count' and 'cited_by_count'
+        topics_approaches_df = pd.concat([topics_approaches_df, df[['recent_work_titles', 'works_count', 'cited_by_count']]], axis=1)
+
+        return topics_approaches_df
 
     def get_all_publications(self, author_id):
         """
@@ -329,14 +421,14 @@ class ExpertProfiler:
                 file_path = os.path.join(save_path, filename)
 
                 # save publications directly to csv
-                df = pd.DataFrame(publications)
-                df['name'] = author_name
+                publications_df = pd.DataFrame(publications)
+                publications_df['name'] = author_name
 
                 # reorder columns to make 'name' the first column
-                columns = ['name'] + [col for col in df.columns if col != 'name']
-                df = df[columns]
+                columns = ['name'] + [col for col in publications_df.columns if col != 'name']
+                publications_df = publications_df[columns]
 
-                df.to_csv(file_path, index=False)
+                publications_df.to_csv(file_path, index=False)
 
                 #print(f"Publications for {author_name} saved to {file_path}.")
             else:
@@ -609,3 +701,4 @@ class ExpertProfiler:
         # converts the results list into a dataframe
         author_seniority = pd.DataFrame(author_seniority_list)
         return author_seniority
+    

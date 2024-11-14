@@ -11,6 +11,7 @@ from .panel_optimizer import PanelOptimizer
 import os
 import pandas as pd
 import warnings
+warnings.filterwarnings("ignore")
 
 class ReviewerMatcher:
     def __init__(self):
@@ -53,7 +54,6 @@ class ReviewerMatcher:
 
         # print completeness and enriched data 
         print(f"Reviewer Information Retrieval Success Rate (Using ORCID + Full Name): {completeness_both}%")
-        print(reviewers_enriched.head())
 
         # predict the reviewers' gender 
         reviewers_gender = self.expert_profiler.enrich_data_with_predicted_gender(reviewers_enriched, self.expert_profiler.api_key)
@@ -63,9 +63,21 @@ class ReviewerMatcher:
         file_path = os.path.join(save_path, 'reviewers_gender.csv')
         reviewers_gender.to_csv(file_path, index=False)
 
-        # print the breakdown of genders
-        print("Gender Breakdown:")
-        print(reviewers_gender['gender'].value_counts(normalize=True) * 100)
+        # add research phases to reviewer data
+        reviewers_phases = self.expert_profiler.classify_recent_works_research_phase(reviewers_gender)
+
+        # save the research phases
+        save_path = os.path.join("..", "intermediate_data", "reviewer_profile")
+        file_path = os.path.join(save_path, 'reviewers_phases.csv')
+        reviewers_phases.to_csv(file_path, index=False)
+
+        # add dummy columns for topics and approaches
+        reviewers_topics_approaches = self.expert_profiler.add_topics_and_approaches_dummies(reviewers_phases)
+
+        # save the dummy columns
+        save_path = os.path.join("..", "intermediate_data", "reviewer_profile")
+        file_path = os.path.join(save_path, 'reviewers_topics_approaches.csv')
+        reviewers_topics_approaches.to_csv(file_path, index=False)
 
         # directory to save the publications
         save_path = os.path.join("..", "intermediate_data", "reviewer_publications")
@@ -101,7 +113,7 @@ class ReviewerMatcher:
         # combine all data from the domain classification output folder
         domain_data = self.expert_profiler.combine_data(output_folder)
 
-        # print the proportion of papers classified as biomedical
+        # print the proportion of papers classified as biomedicine
         biomedicine_proportion = (domain_data['domain'] == 'Biomedicine').mean() * 100
         print(f"\nProportion of papers in the biomedicine domain: {biomedicine_proportion:.2f}%")
 
@@ -110,7 +122,6 @@ class ReviewerMatcher:
         output_folder = "../intermediate_data/reviewer_mental_health"
 
         # classify mental health
-        warnings.filterwarnings("ignore")
         self.expert_profiler.classify_all_publications_by_mental_health(input_folder, output_folder)
 
         # combine data to display statistics 
