@@ -4,11 +4,8 @@ import pandas as pd
 import time
 import os
 import re
-from transformers import pipeline
-from sklearn.feature_extraction.text import TfidfVectorizer
 import ast
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch
+from datetime import datetime
 
 class ExpertProfiler:
     def __init__(self, data_path, api_key, base_url="https://api.openalex.org"):
@@ -99,11 +96,11 @@ class ExpertProfiler:
             return {
                 "name": None,
                 "orcid": None,
+                "topics_of_expertise": [],
+                "approaches": [],
+                "recent_work_titles": None,
                 "works_count": None,
                 "cited_by_count": None,
-                "recent_work_titles": [],
-                "work_types": [],
-                "areas_of_interest": []
             }
     
         # extracts the author id from the author_info object
@@ -126,17 +123,20 @@ class ExpertProfiler:
         details = {
             "name": author_info.get("display_name"),
             "orcid": author_info.get("orcid"),
-            "works_count": author_info.get("works_count"),
-            "cited_by_count": author_info.get("cited_by_count"),
+
+            # extracts topics of expertise from topics associated with the author
+            "topics_of_expertise": [topic.get("display_name") for topic in author_info.get("x_topics", [])] if author_info.get("x_topics") else [],
+            
+            # extracts approaches from concepts associated with the author
+            "approaches": [concept.get("display_name") for concept in author_info.get("x_concepts", [])] if author_info.get("x_concepts") else [],
+
             # includes recent work titles in the details
             "recent_work_titles": recent_work_titles,
-            # includes work types in the details
-            "work_types": work_types,
-            # extracts areas of interest from concepts associated with the author if available
-            "areas_of_interest": [concept.get("display_name") for concept in author_info.get("x_concepts", [])] 
-            if author_info.get("x_concepts") else [],
+
+            "works_count": author_info.get("works_count"),
+            "cited_by_count": author_info.get("cited_by_count"),
         }
-        
+
         # returns the dictionary with the author's details
         return details
 
@@ -280,6 +280,10 @@ class ExpertProfiler:
                 break
             # pauses to avoid overwhelming the api with requests
             time.sleep(1)  
+
+        # sort the works by publication_date (most recent first)
+        all_works.sort(key=lambda x: datetime.strptime(x['publication_date'], '%Y-%m-%d'), reverse=True)
+
         # returns the list of all works retrieved
         return all_works
     
@@ -326,7 +330,12 @@ class ExpertProfiler:
 
                 # save publications directly to csv
                 df = pd.DataFrame(publications)
-                df['author_name'] = author_name
+                df['name'] = author_name
+
+                # reorder columns to make 'name' the first column
+                columns = ['name'] + [col for col in df.columns if col != 'name']
+                df = df[columns]
+
                 df.to_csv(file_path, index=False)
 
                 #print(f"Publications for {author_name} saved to {file_path}.")
