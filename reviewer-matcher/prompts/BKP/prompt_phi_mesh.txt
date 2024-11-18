@@ -1,0 +1,13 @@
+Can you please identify terms from the MeSH vocabulary (Medical Subject Headings) in the following text from a research proposal?
+For each term identified, please indicate whether it refers to the research topics to be studied or to the research method or approaches to use.
+Please generate a comma-separated list of MeSH terms without new line characters.
+
+Example output:
+
+- Impulsive Behavior (topic), Inflammation (topic), Nutritional status (topic), Pregnancy (topic), Surveys and Questionnaires (method), Cohort Studies (method), Regression Analysis (method)
+
+The abstract to consider is:
+
+{abstract}
+
+

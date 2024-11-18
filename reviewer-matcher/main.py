@@ -14,6 +14,7 @@
 #
 
 import argparse
+from core.config_handler import ConfigManager
 from pipeline.data_processing_pipeline import DataProcessingPipeline
 
 # Define the list of all components
@@ -46,10 +47,32 @@ def main():
     parser.add_argument(
         '--call', type=str, help="Specify the name of the call to override the default in config_general."
     )
+    parser.add_argument(
+        '--test-mode', action='store_true', default=False, help="Run the pipeline in test mode (default: False)."
+    )
+    parser.add_argument(
+        '--test-number', type=int, default=10, help="Specify the number of rows to process in test mode (default: 10)."
+    )
     args = parser.parse_args()
       
+    # Create a single ConfigManager handling all configuration files.
+    config_manager = ConfigManager([
+        'configs.config_general',
+        'configs.config_llm',
+        'configs.config_get_publications'
+    ])
+    
+    # Print all configurations for debugging.
+    config_manager.print_all_configs()
+        
     # Initialize and run the pipeline.
-    pipeline = DataProcessingPipeline('configs.config_general', call=args.call, all_components=ALL_COMPONENTS)
+    pipeline = DataProcessingPipeline(
+        config_manager=config_manager,
+        call=args.call,
+        all_components=ALL_COMPONENTS,
+        test_mode=args.test_mode,
+        test_number=args.test_number
+    )
     pipeline.run_pipeline(components=args.components, exclude=args.exclude)
 
 if __name__ == '__main__':
