@@ -55,12 +55,5 @@ ID_COLUMN_NAME = 'ID'
 # HuggingFace token.
 HF_TOKEN = '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'
 
-### Columns of the experts' dataframe containing pre-defined values for research areas (topics) and approaches in the experts' spreadsheet.
-# These values are used to tag each project indicating whether it can be associated with these research areas or approaches.
-# Only values actually ocurring are considered (pre-defined values that are not associated with any expert are not considered).
-EXTRACT_VALUES_EXPERTS_COLUMNS = [
-    'RESEARCH_AREAS',
-    'RESEARCH_APPROACHES'
-]
 
 

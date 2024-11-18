@@ -1,0 +1,61 @@
+Given the title and abstract of a research proposal, please extract and summarize the following information in a structured and programmatically friendly JSON format:
+
+    - Research topic:
+        Summarize the research topic.
+
+    - Objectives:
+        Provide a short list (one to three) of clear and concise sentences summarizing the main objective(s) of the research.
+        Ensure each objective is independent, without references to other objectives.
+        If two objectives are highly similar, combine them into a single sentence to avoid redundancy.
+
+    - Methods:
+        Provide a list with two to three clear and concise sentences summarizing the main methods, techniques, or approaches.
+        Omit details such as sample sizes, number of participants and timeframes.
+
+Formatting instructions:
+
+    Please return the output in valid JSON format with beginning and end marks, with the following structure.
+
+    ```json
+    {{
+      "research_topic": "Specific research topic here",
+      "objectives": ["First research objective here", "Second research objective here", ...],
+      "methods": ["First research method here", "Second research method here", ...],
+    }}
+    ```
+
+*** Return only the JSON content, and nothing else. ***
+
+-----------------
+Example input:
+
+Title:
+Exploring the effect of physical activity & nutraceutical supplementation on mitochondrial signaling in the clinical improvement of autism and schizophrenia.
+
+Abstract:
+BackgroundRecent evidence supports that mitochondria sense, integrate and transduce psychological and behavioral factors into cellular and molecular modifications and, in turn, contribute to the biologically embedding of psychological states. Also, mitochondrial dysfunction is reported in autism spectrum disorder (ASD) and schizophrenia (SCZ).AimsTo evaluate the biological and psychological impact of a combined physical activity & nutraceutical supplementation (PA&NS) as an adjunctive treatment for ASD and SCZ in the mitochondrial functioning.MethodsParticipants: 60 control individuals; 60 patients with ASD; and 60 patients with SCZ. 30 participants per treatment group (PA&NS or PA&placebo). Visits: 0 (baseline), 16 and 24 weeks.Primary biological outcomes: Mean change in: circulating-cell-free mitochondrial DNA copy number, levels of mitokines and sirtuines, metabolomic glycoprotein and lipoprotein profiles, and inflammatory markers, to know the impact of PA&NS in mitochondrial functioning. Nuclear DNA and mitochondrial DNA profiles to know their impact on biological measures. Primary clinical outcomes: Mean change in total SRS or PANSS scores in patients with ASD or SCZ, respectively, and correlation with mitochondrial functioning. Statistical analyses: MMRM model, Pearson Product Moment Correlations; X2, t-test, ANOVA, general linear model and non-parametric tests.
+
+Expected output:
+
+    ```json
+    {{
+      "research_topic": "Integrative treatments for autism and schizophrenia",
+      "objectives": [
+          "Evaluate the biological and psychological impact of combined physical activity & nutraceutical supplementation in autism and schizophrenia",
+          "Understand the role of mitochondrial functioning in the pathophysiology of autism and schizophrenia"
+        ],
+      "methods": [
+        "Controlled trial",
+        "Mitochondrial function assessment via DNA, protein, and marker analysis",
+        "Statistical analyses"
+      ]
+    }}
+    ```
+
+-----------------
+Title:
+{title}
+
+Abstract:
+{abstract}
+

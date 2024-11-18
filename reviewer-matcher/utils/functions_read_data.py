@@ -79,4 +79,17 @@ def flatten_lists(df, separator):
     df[col] = df[col].apply(lambda value: separator.join(map(str, value)) if isinstance(value, list) else value)
   return df
   
-
+# Extract values from cells with a given separator and return them as a list.
+def extract_values_column(data, column, separator):
+#----------------------------------------
+  if column in data:
+    column_values = data[column].dropna().apply(lambda x: x.split(separator))
+    return list(set(
+        value.strip(f'\'"{string.whitespace}')
+        for sublist in column_values
+        for value in sublist
+        if value.strip(f'\'"{string.whitespace}')
+    ))
+  else:
+    return []
+    

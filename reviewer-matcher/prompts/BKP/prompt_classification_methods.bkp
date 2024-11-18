@@ -1,0 +1,67 @@
+Given a list of methods, tools and approaches used in a biomedical research, please:
+1. Summarize each method or family of methods omitting details such as sample sizes, number of participants, and timeframes.
+2. Classify each method into:
+   - Standard: General research methods common in biomedicine (e.g.: Randomized controlled trial, Cohort study, Statistical analyses)
+   - Specific: Techniques, tools or approaches used specifically in the study (e.g.: DNA methylation analysis, Functional MRI, Machine learning)
+   
+Formatting instructions:
+
+Please return the output in valid JSON format with beginning and end marks, using the following structure:
+  
+    ```json
+    {{
+      "methods_standard": ["First standard method here", "Second standard method here", ...],
+      "methods_specific": ["First specific method here", "Second specific method here", ...]
+    }}
+    ```
+*** If no methods are found in one category, return an empty list [] for it. ***
+
+*** Return only the JSON content, and nothing else. ***
+
+-----------------
+Example input:
+
+Methods:
+
+- Randomized clinical trial
+- Measurement of circulating-cell-free mitochondrial DNA copy number
+- Metabolomic glycoprotein and lipoprotein profiles analysis
+- Pearson Product Moment Correlations
+- ANOVA
+- Cohort study
+- Food frequency questionnaires
+- Behavioral scales and computer-based tests
+- Machine learning for risk algorithm development
+- Data analysis of over 10,000 individuals and 200 risk factors
+
+Expected output:
+
+    ```json
+    {{
+      "methods_standard": [
+        "Randomized clinical trial",
+        "Statistical analyses",
+        "Cohort study",
+        "Questionnaires",
+        "Data analysis"
+      ],
+      "methods_specific": [
+        "Biomarker and molecular analysis",
+        "Behavioral assessments",
+        "Machine learning",
+      ]
+    }}
+    ```
+-----------------
+Methods:
+
+{methods}
+
+
+
+
+
+
+
+
+

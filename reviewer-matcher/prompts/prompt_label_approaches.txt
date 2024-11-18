@@ -1,0 +1,82 @@
+Given:
+i) A title and an abstract from a project proposal;
+ii) A list of topics including research approaches (disciplines, methods, strategies, techniques) or scopes of work (specific research areas).
+
+Please indicate, for each research approach/scope, whether it is explicitly mentioned as being considered in the project, based on the information provided in the abstract.
+
+Please provide a very short justification for your response.
+
+Formatting instructions:
+
+    Please return the output in valid JSON format with beginning and end marks, with the following structure.
+
+    ```json
+    {{
+      "APPROACH1": {{
+          "response": "YES/NO",
+          "justification": "Short sentence explaining your response."
+      }},
+      "APPROACH2": {{
+          "response": "YES/NO",
+          "justification": "Short sentence explaining your response."
+      }},
+      ...
+    }}
+    ```
+
+*** Return only the JSON content, and nothing else. ***
+
+------------------------------------
+Example:
+
+Title:
+Enhancing Resident Immunity against Sexually Transmitted Infections (SPIRITS)
+
+Abstract:
+This project aims to enhance mucosal immunity to sexually transmitted infections (STIs) by focusing on the role of resident memory immune cells in the cervicovaginal mucosa. Using a human cervical explant model, the research will explore how pathogen-related signals and changes in the local tissue environment, such as inflammation, hormones, and microbial dysbiosis, affect immune responses. The goal is to identify signals that effectively engage mucosal immunity and improve vaccine design against STIs, addressing challenges like asymptomatic infections and antibiotic resistance. The project expects to provide insights into the unique features of resident immune cells and their role in protective immunity.
+
+Approaches:
+- Psychology
+- Molecular and cellular physiology
+- Clinical Trials
+- Artificial Intelligence & Machine learning
+- Imaging techniques (MRI, EEG, CAT, etc.)
+
+
+Expected output:
+
+```json
+{{
+    "Psychology": {{
+        "response": "NO",
+        "justification": "The project does not focus on psychological aspects."
+    }},
+    "Molecular and cellular physiology": {{
+        "response": "YES",
+        "justification": "The project explores cellular immune responses."
+    }},
+    "Clinical Trials": {{
+        "response": "NO",
+        "justification": "The study does not involve clinical trials."
+    }},
+    "Artificial Intelligence & Machine learning": {{
+        "response": "NO",
+        "justification": "There is no mention of AI or machine learning."
+    }},
+    "Imaging techniques (MRI, EEG, CAT, etc.)": {{
+        "response": "NO",
+        "justification": "The project does not involve imaging techniques."
+    }}
+}}
+```
+
+------------------------------------
+Title:
+{title}
+
+Abstract:
+{abstract}
+
+Approaches:
+{topics}
+

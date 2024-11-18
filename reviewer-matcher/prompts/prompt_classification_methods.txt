@@ -1,0 +1,80 @@
+Given the title of a biomedical study and a list of methods used in it (including types of analyses, tools, technologies, approaches), please:
+
+1. Classify each method into:
+   - Standard: General research methods (e.g.: Randomized controlled trial, Cohort study, Focus group, Statistical analyses)
+   - Specific: Methodologies, techniques, tools or approaches specific to the study (e.g.: DNA methylation analysis, Functional MRI, Machine learning)
+2. Summarize each method or family of methods used, omitting details such as sample sizes, number of participants.
+   
+Formatting instructions:
+
+    Please return the output in valid JSON format with beginning and end marks, with the following structure.
+  
+    ```json
+    {{
+      "methods_standard": ["First standard method here", "Second standard method here", ...],
+      "methods_specific": ["First specific method here", "Second specific method here", ...]
+    }}
+    ```
+
+Note:
+It is possible that there are no standard methods listed. In this case return an empty list [] for the "methods_standard" field.
+
+*** Return only the JSON content, and nothing else. ***
+
+-----------------
+Example input:
+
+Title:
+
+A Multimodal Investigation of Mitochondrial and Metabolomic Factors in Brain Health and Chronic Disease Risk: A Randomized Trial and Cohort Study of Over 10,000 Participants
+
+Methods:
+
+- Randomized clinical trial
+- Measurement of circulating-cell-free mitochondrial DNA copy number
+- Metabolomic glycoprotein and lipoprotein profiles analysis
+- Pearson Product Moment Correlations
+- ANOVA
+- Cohort study
+- Food frequency questionnaires
+- Behavioral scales and computer-based tests
+- Machine learning for risk algorithm development
+- Neuroimaging studies to explore structural brain changes
+- Data analysis of over 10,000 individuals and 200 risk factors
+
+Expected output:
+
+    ```json
+    {{
+      "methods_standard": [
+        "Randomized clinical trial",
+        "Statistical analyses",
+        "Cohort study",
+        "Questionnaires",
+        "Data analysis"
+      ],
+      "methods_specific": [
+        "Biomarker and molecular analysis",
+        "Behavioral assessments",
+        "Machine learning",
+        "Neuroimaging studies"
+      ]
+    }}
+    ```
+-----------------
+Title:
+
+{title}
+
+Methods:
+
+{methods}
+
+
+
+
+
+
+
+
+
