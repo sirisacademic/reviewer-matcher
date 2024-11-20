@@ -87,7 +87,7 @@ class DataProcessingPipeline:
         )
         self.research_labeler = research_labeler_class(self.config_manager)
         self.content_extractor = ContentExtractor()
-        self.mesh_labeler = MeSHLabeler()
+        self.mesh_labeler = MeSHLabeler(self.config_manager)
         self.label_similarity_calculator = LabelSimilarityCalculator()
         self.mesh_similarity_calculator = MeSHSimilarityCalculator()
         self.content_similarity_calculator = ContentSimilarityCalculator()
