@@ -251,7 +251,15 @@ class DataProcessingPipeline:
         try:
             projects = self._load_project_data()
             print('Tagging projects with MeSH terms...')
-            projects = self.mesh_labeler.label_with_mesh(projects)
+            mesh_labeler = MeSHLabeler()
+            input_columns = {
+                'TITLE': 'string',
+                'ABSTRACT': 'string',
+                'RESEARCH_TOPIC': 'string',
+                'OBJECTIVES': 'string',
+                'METHODS': 'list'
+            }
+            projects = mesh_labeler.label_with_mesh(projects, input_columns)
             self.data_saver.save_data(projects, self.file_projects_pipeline)
             return projects
         except Exception as e:
@@ -263,7 +271,15 @@ class DataProcessingPipeline:
         try:
             publications = self._enrich_publications()
             print('Tagging publications with MeSH terms...')
-            publications = self.mesh_labeler.label_with_mesh(publications)
+            mesh_labeler = MeSHLabeler()
+            input_columns = {
+                'TITLE_PUBMED': 'string',
+                'ABSTRACT_PUBMED': 'string',
+                'RESEARCH_TOPIC': 'string',
+                'OBJECTIVES': 'string',
+                'METHODS': 'list'
+            }
+            publications = mesh_labeler.label_with_mesh(publications, input_columns)
             self.data_saver.save_data(publications, self.file_publications_pipeline)
             return publications
         except Exception as e:
