@@ -55,5 +55,23 @@ ID_COLUMN_NAME = 'ID'
 # HuggingFace token.
 HF_TOKEN = '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'
 
+# MeSH Labeler Configuration
+MESH_EXCLUDE_TERMS = ['Animals', 'Humans', 'Female', 'Male']  # Terms to exclude from MeSH labeling
+MESH_THRESHOLD = 0.6  # Probability threshold for MeSH term inclusion
 
+# Input column configurations for MeSH tagging
+MESH_INPUT_COLUMNS_PROJECTS = {
+    'TITLE': 'string',
+    'ABSTRACT': 'string',
+    'RESEARCH_TOPIC': 'string',
+    'OBJECTIVES': 'string',
+    'METHODS': 'list'
+}
 
+MESH_INPUT_COLUMNS_PUBLICATIONS = {
+    'TITLE_PUBMED': 'string',
+    'ABSTRACT_PUBMED': 'string',
+    'RESEARCH_TOPIC': 'string',
+    'OBJECTIVES': 'string',
+    'METHODS': 'list'
+}
