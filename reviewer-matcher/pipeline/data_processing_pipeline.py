@@ -62,7 +62,7 @@ class DataProcessingPipeline:
     def _override_call_settings(self, call):
         """Override CALL-specific settings."""
         self.config_manager.set('CALL', call)
-        call_path = f'calls/{call}'
+        call_path = f'/calls/{call}'
         self.config_manager.set('CALL_PATH', call_path)
         self.config_manager.set('DATA_PATH', f'{call_path}/data')
         self.config_manager.set('MAPPINGS_PATH', f'{call_path}/mappings')
