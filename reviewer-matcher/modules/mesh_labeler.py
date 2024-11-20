@@ -16,13 +16,13 @@ class MeSHLabeler:
         mesh_terms = []
         mesh_probs = defaultdict(float)
 
-        # Sentence splitting
+        # sentence splitting
         if isinstance(text, str):
             sentences = [sent.text for sent in self.spacy_model(text).sents]
         elif isinstance(text, list):
             sentences = text
 
-        # Process sentences
+        # process sentences
         for sentence in sentences:
             inputs = self.tokenizer([sentence], padding='max_length', return_tensors="pt", truncation=True)
             outputs = self.model(**inputs)
@@ -35,7 +35,7 @@ class MeSHLabeler:
                         mesh_probs[term] = max(mesh_probs[term], prob.item())
                         mesh_terms.append(term)
 
-        # Aggregate results
+        # aggregate results
         if return_occurrences:
             counts = Counter(mesh_terms)
             return {term: {'probability': mesh_probs[term], 'count': counts[term]} for term in counts}
@@ -51,7 +51,7 @@ class MeSHLabeler:
                         return_occurrences=False
                     )
                 )
-        # Combine extracted terms into a single column
+        # combine extracted terms into a single column
         combined_columns = [f'MESH_{col}' for col in input_columns.keys()]
         data['MESH_EXTRACTED'] = data[combined_columns].apply(
             lambda row: self.separator.join(set().union(*row)), axis=1

@@ -272,7 +272,6 @@ class DataProcessingPipeline:
             print(f"Error in _mesh_tag_publications: {e}")
             raise
 
-
     def _compute_similarity(self):
         """Compute similarity scores for experts and projects."""
         try:
