@@ -251,8 +251,9 @@ class DataProcessingPipeline:
         try:
             projects = self._load_project_data()
             print('Tagging projects with MeSH terms...')
+            mesh_labeler = MeSHLabeler(config_manager=self.config_manager)
             input_columns = self.config_manager.get('MESH_INPUT_COLUMNS_PROJECTS')
-            projects = self.mesh_labeler.label_with_mesh(projects, input_columns)
+            projects = mesh_labeler.label_with_mesh(projects, input_columns)
             self.data_saver.save_data(projects, self.file_projects_pipeline)
             return projects
         except Exception as e:
@@ -264,13 +265,15 @@ class DataProcessingPipeline:
         try:
             publications = self._enrich_publications()
             print('Tagging publications with MeSH terms...')
+            mesh_labeler = MeSHLabeler(config_manager=self.config_manager)
             input_columns = self.config_manager.get('MESH_INPUT_COLUMNS_PUBLICATIONS')
-            publications = self.mesh_labeler.label_with_mesh(publications, input_columns)
+            publications = mesh_labeler.label_with_mesh(publications, input_columns)
             self.data_saver.save_data(publications, self.file_publications_pipeline)
             return publications
         except Exception as e:
             print(f"Error in _mesh_tag_publications: {e}")
             raise
+
 
     def _compute_similarity(self):
         """Compute similarity scores for experts and projects."""
