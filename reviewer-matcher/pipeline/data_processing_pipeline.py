@@ -18,6 +18,7 @@ from modules.content_similarity_calculator import ContentSimilarityCalculator
 from modules.expert_ranker import ExpertRanker
 from modules.expert_assigner import ExpertAssigner
 from modules.expert_profiler import ExpertProfiler
+from modules.research_type_similarity_calculator import ResearchTypeSimilarityCalculator
 
 class DataProcessingPipeline:
 
@@ -58,7 +59,8 @@ class DataProcessingPipeline:
             'similarity_computation': self._compute_similarity,
             'expert_ranking': self._rank_experts,
             'expert_assignment': self._assign_experts,
-            'determine_seniority': self._determine_seniority
+            'determine_seniority': self._determine_seniority,
+            'research_type_similarity_calculation': self._calculate_research_type_similarity
         }
 
     def _override_call_settings(self, call):
@@ -96,6 +98,7 @@ class DataProcessingPipeline:
         self.expert_ranker = ExpertRanker()
         self.expert_assigner = ExpertAssigner()
         self.expert_profiler = ExpertProfiler(self.config_manager)
+        self.research_type_similarity_calculator = ResearchTypeSimilarityCalculator(self.config_manager)
 
     def _run_component(self, component_name, *args, **kwargs):
         """Run a single pipeline component."""
@@ -335,3 +338,31 @@ class DataProcessingPipeline:
             print(f"Error in _determine_seniority: {e}")
             raise
 
+    def _calculate_research_type_similarity(self): # done
+        """Calculate similarity between experts and projects based on research types."""
+        try:
+            print("Calculating research type similarity between experts and projects...")
+            projects = self._load_project_data()
+            experts = self._load_expert_data()
+            df_content_similarity_scores, df_mesh_scores, df_jaccard_similarity_scores = self.research_type_similarity_calculator.load_data()
+            df_projects, df_experts, df_content_similarity_scores, df_mesh_scores, df_jaccard_similarity_scores = self.preprocess_data(
+                df_projects=projects, 
+                df_experts=experts, 
+                df_content_similarity_scores=df_content_similarity_scores,
+                df_mesh_scores=df_mesh_scores,
+                df_jaccard_similarity_scores=df_jaccard_similarity_scores
+            )
+            df_combined = self.combine_data(
+                df_projects=df_projects,
+                df_experts=df_experts,
+                df_content_similarity_scores=df_content_similarity_scores,
+                df_mesh_scores=df_mesh_scores,
+                df_jaccard_similarity_scores=df_jaccard_similarity_scores
+            )
+            df_combined = self.calculate_similarity_scores(df_combined)
+            df_combined = self.reorder_columns(df_combined)
+            self.save_combined_data(df_combined)
+            return df_combined
+        except Exception as e:
+            print(f"Error in _calculate_research_type_similarity: {e}")
+            raise

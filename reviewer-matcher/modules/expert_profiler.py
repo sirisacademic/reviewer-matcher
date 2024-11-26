@@ -15,7 +15,7 @@ import numpy as np
 class ExpertProfiler:
     def __init__(self, config_manager):
         """
-        Initialize the ExpertProfiler with a data path, API key, and base URL for OpenAlex.
+        Initialize the ExpertProfiler.
         """
         self.api_key = config_manager.get('OPENALEX_API_KEY')
         self.base_url = config_manager.get('OPENALEX_BASE_URL')
