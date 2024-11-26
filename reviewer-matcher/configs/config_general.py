@@ -43,7 +43,7 @@ FILE_NAME_EXPERTS = 'experts.pkl'
 # Relative to DATA_PATH !
 FILE_NAME_PUBLICATIONS = 'expert_publications.pkl'
 
-# Combined projects 
+# Combined projects.
 FILE_PATH_PROJECTS_ALL_YEARS = 'calls/all_years/projects.pkl'
 
 # Separator for values in generated files.
@@ -55,11 +55,11 @@ ID_COLUMN_NAME = 'ID'
 # HuggingFace token.
 HF_TOKEN = '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'
 
-# MeSH Labeler Configuration
+# MeSH Labeler Configuration.
 MESH_EXCLUDE_TERMS = ['Animals', 'Humans', 'Female', 'Male']  # Terms to exclude from MeSH labeling
 MESH_THRESHOLD = 0.6  # Probability threshold for MeSH term inclusion
 
-# Input column configurations for MeSH tagging
+# Input column configurations for MeSH tagging.
 MESH_INPUT_COLUMNS_PROJECTS = {
     'TITLE': 'string',
     'ABSTRACT': 'string',
@@ -75,3 +75,18 @@ MESH_INPUT_COLUMNS_PUBLICATIONS = {
     'OBJECTIVES': 'string',
     'METHODS': 'list'
 }
+
+# OpenAlex API Key and Base URL.
+
+# OPENALEX_API_KEY = ...
+OPENALEX_BASE_URL = "https://api.openalex.org"
+
+# Setting of values for low, middle and high seniority.
+
+SENIORITY_UNDETERMINED = 0
+SENIORITY_LOW = 1
+SENIORITY_MIDDLE = 2
+SENIORITY_HIGH = 3
+
+NUM_PUBS_TOP_PERC_SENIORITY = 30
+NUM_CITATIONS_TOP_PERC_SENIORITY = 30

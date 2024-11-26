@@ -1,4 +1,4 @@
-#from citation_parser import CitationParser
+from citation_parser import CitationParser
 import pandas as pd
 import re
 import time

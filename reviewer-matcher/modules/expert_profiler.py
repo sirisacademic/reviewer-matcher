@@ -10,15 +10,100 @@ from transformers import pipeline
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 from sklearn.feature_extraction.text import TfidfVectorizer
+import numpy as np
 
 class ExpertProfiler:
-    def __init__(self, data_path, api_key, base_url="https://api.openalex.org"):
+    def __init__(self, config_manager):
         """
         Initialize the ExpertProfiler with a data path, API key, and base URL for OpenAlex.
         """
-        self.data_path = data_path
-        self.api_key = api_key
-        self.base_url = base_url
+        self.api_key = config_manager.get('OPENALEX_API_KEY')
+        self.base_url = config_manager.get('OPENALEX_BASE_URL')
+
+        self.seniority_undetermined = config_manager.get('SENIORITY_UNDETERMINED')
+        self.seniority_low = config_manager.get('SENIORITY_LOW')
+        self.seniority_middle = config_manager.get('SENIORITY_MIDDLE')
+        self.seniority_high = config_manager.get('SENIORITY_HIGH')
+
+        self.num_pubs_top_perc = config_manager.get('NUM_PUBS_TOP_PERC_SENIORITY')
+        self.num_cits_top_perc = config_manager.get('NUM_CITATIONS_TOP_PERC_SENIORITY')
+
+    def extract_number(self, text):
+        """
+        Extract the first valid numeric value from a text.
+        """
+        # check if the input is already an integer
+        if type(text) == int:
+            return text
+        # check for empty or NaN values
+        if pd.isna(text) or text.strip() == '':
+            return 0
+        # check if the entire text is a URL, if so return 0
+        if re.match(r'^(https?://)', text.strip()):
+            return 0
+        # extract all numbers, including those with commas
+        numbers = re.findall(r'\b\d{1,10}(?:,\d{3})*|\d+\b', text)
+        if numbers:
+            # clean commas and convert all numbers to integers
+            cleaned_numbers = [int(num.replace(',', '')) for num in numbers]
+            # return the largest number found
+            return max(cleaned_numbers)
+        return 0
+
+    def preprocess_data(self, df_experts):
+        """
+        Preprocess the experts' dataframe by converting relevant columns to numeric values.
+        """
+        # apply the extract_number method to the NUMBER_PUBLICATIONS column
+        df_experts['NUMBER_PUBLICATIONS'] = df_experts['NUMBER_PUBLICATIONS'].apply(self.extract_number)
+        # apply the extract_number method to the NUMBER_CITATIONS column
+        df_experts['NUMBER_CITATIONS'] = df_experts['NUMBER_CITATIONS'].apply(self.extract_number)
+        return df_experts
+
+    def calculate_thresholds(self, df_experts):
+        """
+        Calculate thresholds for publications and citations based on percentile values.
+        """
+        # calculate the publication threshold based on the specified top percentile
+        pub_threshold = np.percentile(df_experts['NUMBER_PUBLICATIONS'], self.num_pubs_top_perc)
+        # calculate the citation threshold based on the specified top percentile
+        cits_threshold = np.percentile(df_experts['NUMBER_CITATIONS'], self.num_cits_top_perc)
+        # return the calculated thresholds as a tuple
+        return pub_threshold, cits_threshold
+
+    def determine_seniority(self, row, pub_threshold, cits_threshold):
+        """
+        Determine seniority based on publication count, citation count, and experience.
+        """
+        # if the expert has no publications and no citations
+        if row['NUMBER_PUBLICATIONS'] == 0 and row['NUMBER_CITATIONS'] == 0:
+            # check if the expert has any reviewer or panel experience
+            if row['EXPERIENCE_REVIEWER'] == 'yes' or row['EXPERIENCE_PANEL'] == 'yes':
+                # assign seniority as undetermined if experience exists but no publications or citations
+                return self.seniority_undetermined
+            else:
+                # otherwise, assign seniority as low
+                return self.seniority_low
+        # if the expert has a high number of publications and reviewer experience
+        elif row['NUMBER_PUBLICATIONS'] >= pub_threshold and row['EXPERIENCE_REVIEWER'] == 'yes':
+            # assign seniority as high
+            return self.seniority_high
+        # if the expert has either high publications or reviewer experience
+        elif row['NUMBER_PUBLICATIONS'] >= pub_threshold or row['EXPERIENCE_REVIEWER'] == 'yes':
+            # check if the expert has panel experience or high citations
+            if row['EXPERIENCE_PANEL'] == 'yes' or row['NUMBER_CITATIONS'] >= cits_threshold:
+                # assign seniority as middle if additional experience exists
+                return self.seniority_middle
+            else:
+                # otherwise, assign seniority as low
+                return self.seniority_low
+        # if the expert has both reviewer and panel experience
+        elif row['EXPERIENCE_REVIEWER'] == 'yes' and row['EXPERIENCE_PANEL'] == 'yes':
+            # assign seniority as middle
+            return self.seniority_middle
+        else:
+            # for all other cases, assign seniority as low
+            return self.seniority_low
 
     def query_openalex_by_name(self, full_name):
         """

@@ -17,6 +17,7 @@ from modules.mesh_similarity_calculator import MeSHSimilarityCalculator
 from modules.content_similarity_calculator import ContentSimilarityCalculator
 from modules.expert_ranker import ExpertRanker
 from modules.expert_assigner import ExpertAssigner
+from modules.expert_profiler import ExpertProfiler
 
 class DataProcessingPipeline:
 
@@ -56,7 +57,8 @@ class DataProcessingPipeline:
             'publication_mesh_tagging': self._mesh_tag_publications,
             'similarity_computation': self._compute_similarity,
             'expert_ranking': self._rank_experts,
-            'expert_assignment': self._assign_experts
+            'expert_assignment': self._assign_experts,
+            'determine_seniority': self._determine_seniority
         }
 
     def _override_call_settings(self, call):
@@ -93,6 +95,7 @@ class DataProcessingPipeline:
         self.content_similarity_calculator = ContentSimilarityCalculator()
         self.expert_ranker = ExpertRanker()
         self.expert_assigner = ExpertAssigner()
+        self.expert_profiler = ExpertProfiler(self.config_manager)
 
     def _run_component(self, component_name, *args, **kwargs):
         """Run a single pipeline component."""
@@ -246,34 +249,31 @@ class DataProcessingPipeline:
     # In the case of publications we should consider the possibility to tag them or use the MeSH terms retrieved from PubMed
     # and tag only the publications that do not contain MeSH terms.
 
-    def _mesh_tag_projects(self):
+    def _mesh_tag_projects(self): # done
         """Tag projects with MeSH terms."""
         try:
             projects = self._load_project_data()
             print('Tagging projects with MeSH terms...')
-            mesh_labeler = MeSHLabeler(config_manager=self.config_manager)
             input_columns = self.config_manager.get('MESH_INPUT_COLUMNS_PROJECTS')
-            projects = mesh_labeler.label_with_mesh(projects, input_columns)
+            projects = self.mesh_labeler.label_with_mesh(projects, input_columns)
             self.data_saver.save_data(projects, self.file_projects_pipeline)
             return projects
         except Exception as e:
             print(f"Error in _mesh_tag_projects: {e}")
             raise
 
-    def _mesh_tag_publications(self):
+    def _mesh_tag_publications(self): # done
         """Tag publications with MeSH terms."""
         try:
             publications = self._enrich_publications()
             print('Tagging publications with MeSH terms...')
-            mesh_labeler = MeSHLabeler(config_manager=self.config_manager)
             input_columns = self.config_manager.get('MESH_INPUT_COLUMNS_PUBLICATIONS')
-            publications = mesh_labeler.label_with_mesh(publications, input_columns)
+            publications = self.mesh_labeler.label_with_mesh(publications, input_columns)
             self.data_saver.save_data(publications, self.file_publications_pipeline)
             return publications
         except Exception as e:
             print(f"Error in _mesh_tag_publications: {e}")
             raise
-
 
     def _compute_similarity(self):
         """Compute similarity scores for experts and projects."""
@@ -321,4 +321,17 @@ class DataProcessingPipeline:
             print(f"Error in _assign_experts: {e}")
             raise
 
+    def _determine_seniority(self): # done
+        """Determine seniority levels for experts."""
+        try:
+            print('Determining seniority levels for experts...')
+            experts = self._load_expert_data()
+            experts = self.expert_profiler.preprocess_data(experts)
+            pub_threshold, cits_threshold = self.expert_profiler.calculate_thresholds(experts)
+            experts['SENIORITY'] = experts.apply(lambda row: self.expert_profiler.determine_seniority(row, pub_threshold, cits_threshold), axis=1)
+            self.data_saver.save_data(experts, self.file_experts_pipeline)
+            return experts
+        except Exception as e:
+            print(f"Error in _determine_seniority: {e}")
+            raise
 
