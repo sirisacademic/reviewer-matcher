@@ -90,3 +90,6 @@ SENIORITY_HIGH = 3
 
 NUM_PUBS_TOP_PERC_SENIORITY = 30
 NUM_CITATIONS_TOP_PERC_SENIORITY = 30
+OUTPUT_FILE_EXPERT_PROJECT_JACCARD_SIMILARITY = f'{DATA_PATH}/{CALL}/scores/expert_project_jaccard_similarity_scores.pkl'
+OUTPUT_FILE_EXPERT_PROJECT_SEMANTIC_SIMILARITY = f'{DATA_PATH}/{CALL}/scores/expert_project_semantic_similarity_scores.pkl'
+OUTPUT_FILE_EXPERT_PROJECT_MESH_SIMILARITY = f'{DATA_PATH}/{CALL}/scores/expert_project_mesh_similarity_scores.pkl'
