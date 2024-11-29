@@ -164,23 +164,24 @@ class DataProcessingPipeline:
             # Ensure expert data is loaded
             experts = self._load_expert_data()  
             print('Extracting publication titles using NER...')
-            expert_publication_titles = self.publication_extractor.extract_publication_titles(experts)
-            return expert_publication_titles
+            publications = self.publication_extractor.extract_publications(experts, config_get_publications)
+            self.data_saver.save_data(publications, self.file_publications_pipeline)
+            return publications
         except Exception as e:
             print(f"Error in _extract_publications: {e}")
             raise
 
-    def _retrieve_pubmed_data(self):
-        """Retrieve data from PubMed."""
-        try:
-            expert_publication_titles = self._extract_publications()
-            print('Retrieving PubMed data...')
-            publications = self.pubmed_retriever.fetch_publications(expert_publication_titles)
-            self.data_saver.save_data(publications, self.file_publications_pipeline)
-            return publications
-        except Exception as e:
-            print(f"Error in _retrieve_pubmed_data: {e}")
-            raise
+    # def _retrieve_pubmed_data(self):
+    #     """Retrieve data from PubMed."""
+    #     try:
+    #         expert_publication_titles = self._extract_publications()
+    #         print('Retrieving PubMed data...')
+    #         publications = self.pubmed_retriever.fetch_publications(expert_publication_titles)
+    #         self.data_saver.save_data(publications, self.file_publications_pipeline)
+    #         return publications
+    #     except Exception as e:
+    #         print(f"Error in _retrieve_pubmed_data: {e}")
+    #         raise
 
     def _classify_projects(self):
         """Classify projects with research areas and approaches."""
@@ -282,7 +283,7 @@ class DataProcessingPipeline:
             projects = self._load_project_data()
             experts = self._load_expert_data()
             publications = self._enrich_publications()
-            label_similarity_scores = self.label_similarity_calculator.compute_similarity(experts, projects)
+            label_similarity_scores = self.label_similarity_calculator.compute_similarity(self.config_manager, experts, projects)
             mesh_similarity_scores = self.mesh_similarity_calculator.compute_expert_project_similarity(publications, projects)
             content_similarity_scores = self.content_similarity_calculator.compute_similarity(publications, projects)
             return label_similarity_scores, mesh_similarity_scores, content_similarity_scores

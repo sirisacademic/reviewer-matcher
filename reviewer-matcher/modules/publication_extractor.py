@@ -1,3 +1,4 @@
+from modules.data_saver import DataSaver
 from citation_parser import CitationParser
 import pandas as pd
 import re
@@ -6,11 +7,12 @@ from tqdm import tqdm
 import os
 
 class PublicationExtractor:
-    def __init__(self, config_manager, reviewer_form_path, column = 'State up to FIVE of your most relevant publications in the past five years related to the topic of the call (authors, title, journal, year):'):
+    def __init__(self, experts, config_get_publications, column = 'State up to FIVE of your most relevant publications in the past five years related to the topic of the call (authors, title, journal, year):'):
         self.citation_parser = CitationParser()
-        self.column = column
-        self.data = pd.read_excel(reviewer_form_path)
-        self.linked_output = None
+        self.column_publications = config_get_publications.get('COLUMN_PUBLICATIONS')
+        self.column_reviewer_name = config_get_publications.get('COLUMN_REVIEWER_NAME')
+        self.experts = experts
+        #self.linked_output = None
 
     # Function to split references
     def split_references(self, input):
@@ -49,7 +51,7 @@ class PublicationExtractor:
 
     def extract_publication_titles_for_test(self):
 
-        references_list = self.data[self.column].values.tolist()
+        references_list = self.data[self.column_publications].values.tolist()
         # Process each item in the list
         cleaned_references_list = [self.split_references(block) for block in references_list]
 
@@ -83,8 +85,8 @@ class PublicationExtractor:
 
     def extract_publications(self):
 
-        references_list = self.data[self.column][:3].values.tolist()
-        authors_list = self.data['Full Name:'].values.tolist()
+        references_list = self.experts[self.column][:3].values.tolist()
+        authors_list = self.data[self.column_reviewer_name].values.tolist()
         # Process each item in the list
         cleaned_references_list = [self.split_references(block) for block in references_list]
 
@@ -115,7 +117,6 @@ class PublicationExtractor:
             os.system('cls' if os.name == 'nt' else 'clear')
 
         linked_output = pd.DataFrame(linked, columns = ['ID','FULL_NAME',"REFERENCE", 'OPENALEX_ID','PMID','TITLE_PUBMED','ABSTRACT_PUBMED','MESH_PUBMED'])
-        self.linked_output = linked_output
         return linked_output
             
 # publication_extractor = PublicationExtractor('config_manager','local_data/Reviewer Form.xlsx')
