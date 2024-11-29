@@ -231,7 +231,7 @@ class ContentSimilarityCalculator:
 
         # Save the similarity scores to a file for further analysis
         df_expert_project_scores.to_pickle(self.OUTPUT_FILE_EXPERT_PROJECT_SEMANTIC_SIMILARITY)
-        print(f'Expert-project Jaccard similarity scores saved to {self.OUTPUT_FILE_EXPERT_PROJECT_SEMANTIC_SIMILARITY}')
+        print(f'Expert-project semantic similarity scores saved to {self.OUTPUT_FILE_EXPERT_PROJECT_SEMANTIC_SIMILARITY}')
 
         return df_expert_project_scores
 
