@@ -33,7 +33,7 @@ class LabelSimilarityCalculator:
         for col in ['RESEARCH_AREAS', 'RESEARCH_APPROACHES']:
             set_terms = all_research_areas if col == 'RESEARCH_AREAS' else all_research_approaches
             set_terms.update(
-                term.strip() for terms in pd.concat([self.experts_data[col], self.projects_data[col]]).dropna().apply(lambda x: x.split(self.separator_output))
+                term.strip() for terms in pd.concat([experts_data[col], projects_data[col]]).dropna().apply(lambda x: x.split(self.separator_output))
                 for term in terms
                 if term.strip()
             )
@@ -48,12 +48,12 @@ class LabelSimilarityCalculator:
         mlb_approaches = MultiLabelBinarizer(classes=all_research_approaches)
 
         # Convert and one-hot encode experts and projects' research areas
-        expert_areas_one_hot = mlb_areas.fit_transform(self.experts_data['RESEARCH_AREAS'].apply(lambda x: self.convert_to_list(x)))
-        project_areas_one_hot = mlb_areas.transform(self.projects_data['RESEARCH_AREAS'].apply(lambda x: self.convert_to_list(x)))
+        expert_areas_one_hot = mlb_areas.fit_transform(experts_data['RESEARCH_AREAS'].apply(lambda x: self.convert_to_list(x)))
+        project_areas_one_hot = mlb_areas.transform(projects_data['RESEARCH_AREAS'].apply(lambda x: self.convert_to_list(x)))
 
         # Convert and one-hot encode experts and projects' for research approaches
-        expert_approaches_one_hot = mlb_approaches.fit_transform(self.experts_data['RESEARCH_APPROACHES'].apply(lambda x: self.convert_to_list(x)))
-        project_approaches_one_hot = mlb_approaches.transform(self.projects_data['RESEARCH_APPROACHES'].apply(lambda x: self.convert_to_list(x)))
+        expert_approaches_one_hot = mlb_approaches.fit_transform(experts_data['RESEARCH_APPROACHES'].apply(lambda x: self.convert_to_list(x)))
+        project_approaches_one_hot = mlb_approaches.transform(projects_data['RESEARCH_APPROACHES'].apply(lambda x: self.convert_to_list(x)))
 
         # Calculate Jaccard similarity
 
@@ -61,11 +61,11 @@ class LabelSimilarityCalculator:
         expert_project_jaccard_similarity_scores = []
 
         # Iterate over all expert-project pairs
-        total_iterations = len(self.experts_data) * len(self.projects_data)
+        total_iterations = len(experts_data) * len(projects_data)
 
         with tqdm(total=total_iterations, desc="Calculating Jaccard similarity scores") as pbar:
-            for expert_index, expert_row in self.experts_data.iterrows():
-                for project_index, project_row in self.projects_data.iterrows():
+            for expert_index, expert_row in experts_data.iterrows():
+                for project_index, project_row in projects_data.iterrows():
                     pbar.update(1)
 
                     # Calculate Jaccard Similarity for Research Areas
