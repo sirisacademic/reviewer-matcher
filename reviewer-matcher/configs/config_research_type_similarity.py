@@ -1,16 +1,3 @@
-# Call to be processed (used to retrieve the configuration, URLs, etc).
-CALL = '2021-Salut_Mental'
-
-# Directory with call-specific data.
-CALL_PATH = f'calls/{CALL}'
-
-# Call-specific path.
-DATA_PATH = f'{CALL_PATH}/data'
-
-# Input files.
-FILE_PATH_PROJECTS = f'{DATA_PATH}/{CALL_PATH}/projects.pkl'
-FILE_PATH_EXPERTS = f'{DATA_PATH}/{CALL_PATH}/experts.pkl'
-
 FILE_PATH_EXPERT_PROJECT_CONTENT_SIMILARITY_SCORES = f'{DATA_PATH}/{CALL_PATH}/scores/expert_projects_content_similarity_scores.pkl'
 FILE_PATH_EXPERT_PROJECT_MESH_SCORES = f'{DATA_PATH}/{CALL_PATH}/scores/expert_projects_mesh_scores.pkl'
 FILE_PATH_EXPERT_PROJECT_JACCARD_SIMILARITY = f'{DATA_PATH}/{CALL_PATH}/scores/expert_project_jaccard_similarity_scores.pkl'
