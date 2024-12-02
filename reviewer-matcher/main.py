@@ -21,11 +21,11 @@ from pipeline.data_processing_pipeline import DataProcessingPipeline
 ALL_COMPONENTS = [
     'project_data_loading',
     'expert_data_loading',
-    'publication_extraction',
-    'pubmed_retrieval',
-    'project_enrichment',
-    'publication_enrichment',
+    'publication_titles_extraction',
+    #'pubmed_retrieval',
     'project_classification',
+    'project_summarization',
+    'publication_summarization',
     'project_mesh_tagging',
     'publication_mesh_tagging',
     'similarity_computation',
@@ -59,8 +59,8 @@ def main():
     config_manager = ConfigManager([
         'configs.config_general',
         'configs.config_llm',
-        'configs.config_get_publications',
-        'configs.config_research_type_similarity'
+        'configs.config_get_publications'
+        #'configs.config_research_type_similarity'
     ])
     
     # Print all configurations for debugging.

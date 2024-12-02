@@ -4,22 +4,22 @@ from core.settings_manager import SettingsManager
 
 from utils.functions_read_data import load_file, extract_values_column
 
+# !!!! Commenting modules with errors to be able to run the others !!!!    
 from modules.data_reader import DataReader
 from modules.data_saver import DataSaver
-from modules.publication_extractor import PublicationExtractor
-from modules.pubmed_retriever import PubMedRetriever
-from modules.content_extractor import ContentExtractor
-from modules.external_research_labeler import ExternalResearchLabeler
-from modules.local_research_labeler import LocalResearchLabeler
-from modules.mesh_labeler import MeSHLabeler
-from modules.label_similarity_calculator import LabelSimilarityCalculator
-from modules.mesh_similarity_calculator import MeSHSimilarityCalculator
-from modules.content_similarity_calculator import ContentSimilarityCalculator
-from modules.expert_ranker import ExpertRanker
-from modules.expert_assigner import ExpertAssigner
-from modules.expert_profiler import ExpertProfiler
-from modules.research_type_similarity_calculator import ResearchTypeSimilarityCalculator
-from modules.feature_generator import FeatureGenerator
+#from modules.publication_extractor import PublicationExtractor
+#from modules.pubmed_retriever import PubMedRetriever
+from modules.content_summarizer import ContentSummarizer
+from modules.research_labeler import ResearchLabeler
+#from modules.mesh_labeler import MeSHLabeler
+#from modules.label_similarity_calculator import LabelSimilarityCalculator
+#from modules.mesh_similarity_calculator import MeSHSimilarityCalculator
+#from modules.content_similarity_calculator import ContentSimilarityCalculator
+#from modules.expert_ranker import ExpertRanker
+#from modules.expert_assigner import ExpertAssigner
+#from modules.expert_profiler import ExpertProfiler
+#from modules.research_type_similarity_calculator import ResearchTypeSimilarityCalculator
+#from modules.feature_generator import FeatureGenerator
 
 class DataProcessingPipeline:
 
@@ -31,29 +31,25 @@ class DataProcessingPipeline:
         self.test_number = test_number
         self.all_components = all_components or []
         self.config_manager = config_manager
-           
         # Override CALL if specified
         if call:
             self._override_call_settings(call)
-
         # Initialize paths
         self.data_path = self.config_manager.get('DATA_PATH')
         self.file_projects_pipeline = self.config_manager.get('FILE_NAME_PROJECTS')
         self.file_experts_pipeline = self.config_manager.get('FILE_NAME_EXPERTS')
         self.file_publications_pipeline = self.config_manager.get('FILE_NAME_PUBLICATIONS')
-
         # Initialize settings and modules
         self._initialize_settings()
         self._initialize_modules()
-
         # Component mapping
         self.component_map = {
             'project_data_loading': self._load_project_data,
             'expert_data_loading': self._load_expert_data,
-            'publication_extraction': self._extract_publications,
-            'pubmed_retrieval': self._retrieve_pubmed_data,
-            'project_enrichment': self._enrich_projects,
-            'publication_enrichment': self._enrich_publications,
+            'publication_titles_extraction': self._extract_publication_titles,
+            #'pubmed_retrieval': self._retrieve_pubmed_data,
+            'project_summarization': self._summarize_projects,
+            #'publication_summarization': self._summarize_publications,
             'project_classification': self._classify_projects,
             'project_mesh_tagging': self._mesh_tag_projects,
             'publication_mesh_tagging': self._mesh_tag_publications,
@@ -85,22 +81,19 @@ class DataProcessingPipeline:
     def _initialize_modules(self):
         """Initialize all pipeline modules."""
         self.data_saver = DataSaver(self.config_manager, self.test_mode)
-        self.pubmed_retriever = PubMedRetriever(self.config_manager)
-        self.publication_extractor = PublicationExtractor(self.config_manager)
-        research_labeler_class = (
-            ExternalResearchLabeler if self.config_manager.get('USE_EXTERNAL_LLM_MODEL') else LocalResearchLabeler
-        )
-        self.research_labeler = research_labeler_class(self.config_manager)
-        self.content_extractor = ContentExtractor()
-        self.mesh_labeler = MeSHLabeler(self.config_manager)
-        self.label_similarity_calculator = LabelSimilarityCalculator()
-        self.mesh_similarity_calculator = MeSHSimilarityCalculator()
-        self.content_similarity_calculator = ContentSimilarityCalculator()
-        self.expert_ranker = ExpertRanker()
-        self.expert_assigner = ExpertAssigner()
-        self.expert_profiler = ExpertProfiler(self.config_manager)
-        self.research_type_similarity_calculator = ResearchTypeSimilarityCalculator(self.config_manager)
-        self.feature_generator = FeatureGenerator(self.config_manager)
+        #self.pubmed_retriever = PubMedRetriever(self.config_manager)
+        #self.publication_extractor = PublicationExtractor(self.config_manager)
+        self.research_labeler = ResearchLabeler(self.config_manager)
+        self.content_summarizer = ContentSummarizer(self.config_manager)
+        #self.mesh_labeler = MeSHLabeler(self.config_manager)
+        #self.label_similarity_calculator = LabelSimilarityCalculator()
+        #self.mesh_similarity_calculator = MeSHSimilarityCalculator()
+        #self.content_similarity_calculator = ContentSimilarityCalculator()
+        #self.expert_ranker = ExpertRanker()
+        #self.expert_assigner = ExpertAssigner()
+        #self.expert_profiler = ExpertProfiler(self.config_manager)
+        #self.research_type_similarity_calculator = ResearchTypeSimilarityCalculator(self.config_manager)
+        #self.feature_generator = FeatureGenerator(self.config_manager)
 
     def _run_component(self, component_name, *args, **kwargs):
         """Run a single pipeline component."""
@@ -126,7 +119,7 @@ class DataProcessingPipeline:
         for component in components:
             self._run_component(component)
 
-    # ======== Helper Methods ========
+    # ======== Process and/or load input data (partially processed or raw) ========
 
     def _load_project_data(self):
         """Load or preprocess project data."""
@@ -166,7 +159,10 @@ class DataProcessingPipeline:
             print(f"Error in _load_expert_data: {e}")
             raise
 
-    def _extract_publications(self):
+    # ======== Module-invoking methods ========
+    
+    # Check CitationParser not implemented.
+    def _extract_publication_titles(self):
         """Extract publication titles from expert data."""
         try:
             # Ensure expert data is loaded
@@ -213,19 +209,22 @@ class DataProcessingPipeline:
             print(f"Error in _classify_projects: {e}")
             raise
 
-    ### FUNCTIONS BELOW TO IMPLEMENT UPDATE !!! ###
-
-    def _enrich_projects(self):
-        """Enrich project data."""
+    def _summarize_projects(self):
+        """Summarize content (research topic, objectives, methods) from projects."""
         try:
+            # Load project data
             projects = self._load_project_data()
-            print('Enriching projects...')
-            projects = self.content_extractor.extract_content(projects)
-            self.data_saver.save_data(projects, self.file_projects_pipeline)
-            return projects
+            # Summarize content for the projects
+            print("Starting projects summarization...")
+            enriched_projects = self.content_summarizer.summarize_content(projects)
+            # Save the enriched project data
+            self.data_saver.save_data(enriched_projects, self.file_projects_pipeline)
+            return enriched_projects
         except Exception as e:
-            print(f"Error in _enrich_projects: {e}")
+            print(f"Error in _summarize_projects: {e}")
             raise
+      
+    ### FUNCTIONS BELOW TO CHECK / TEST !!! ###
 
     def _enrich_publications(self):
         """Enrich publication data."""

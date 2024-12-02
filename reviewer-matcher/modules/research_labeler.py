@@ -1,37 +1,25 @@
-import os
 import pandas as pd
 from tqdm import tqdm
+from .llm_handler import LLMHandler
+### TODO: Refactor code and include functions as methods.
 from utils.functions_llm import label_by_topic, extract_and_combine_responses
 
-class ResearchLabeler:
+class ResearchLabeler(LLMHandler):
     def __init__(self, config_manager):
-        # To be initialized in subclasses.
-        self.pipeline_generation = None
-        self.generation_args = None
+        # Initialize LLM.
+        super().__init__(config_manager)
         # Configurations read from config file handled by config_manager.
         self.separator_output = config_manager.get('SEPARATOR_VALUES_OUTPUT', '|')
-        self.prompts_dir = config_manager.get('PROMPTS_DIR')
-        self.max_topics  = config_manager.get('MAX_NUMBER_TOPICS_PER_PROMPT', 5)
-        self.max_retries  = config_manager.get('MAX_RETRIES', 5)
-        self.retry_delay  = config_manager.get('RETRY_DELAY', 2)
-        self.json_response  = config_manager.get('JSON_RESPONSE', False)
+        self.max_topics = config_manager.get('MAX_NUMBER_TOPICS_PER_PROMPT', 5)
+        self.max_retries = config_manager.get('MAX_RETRIES', 5)
+        self.retry_delay = config_manager.get('RETRY_DELAY', 2)
+        self.json_response = config_manager.get('JSON_RESPONSE', False)
         self.input_cols = {
-          'title': config_manager.get('COLUMN_TITLE'),
-          'abstract': config_manager.get('COLUMN_ABSTRACT'),
-          }
-
-    def _load_prompt(self, prompt_file):
-        """
-        Load prompts from files.
-        Args:
-            prompts_dir: Directory containing the prompts.
-        Returns:
-            dict: Dictionary with loaded prompts.
-        """
-        prompt = None
-        with open(os.path.join(self.prompts_dir, prompt_file)) as f:
-            prompt = f.read()
-        return prompt
+            'title': config_manager.get('COLUMN_TITLE'),
+            'abstract': config_manager.get('COLUMN_ABSTRACT'),
+        }
+        # Set temperature for classification.
+        self.generation_args['temperature'] = config_manager.get('TEMPERATURE_CLASSIFICATION', 0.0)
 
     def label_topics(self, df, topics, prompt_file, output_column):
         """
@@ -50,29 +38,26 @@ class ResearchLabeler:
         prompt = self._load_prompt(prompt_file)
         # Get responses.
         research_labels = df.progress_apply(lambda row:
-              pd.Series(
+            pd.Series(
                 label_by_topic(
-                  self.pipeline_generation,
-                  self.generation_args,
-                  prompt,
-                  title=row[self.input_cols['title']],
-                  abstract=row[self.input_cols['abstract']],
-                  topics=topics,
-                  max_topics=self.max_topics,
-                  max_retries=self.max_retries,
-                  retry_delay=self.retry_delay,
-                  json_response=self.json_response
+                    self.pipeline_generation,
+                    self.generation_args,
+                    prompt,
+                    title=row[self.input_cols['title']],
+                    abstract=row[self.input_cols['abstract']],
+                    topics=topics,
+                    max_topics=self.max_topics,
+                    max_retries=self.max_retries,
+                    retry_delay=self.retry_delay,
+                    json_response=self.json_response
                 )
-              ),
+            ),
             axis=1
-          )
+        )
         # Combine output and add column to dataframe.
         df[output_column] = research_labels.progress_apply(
             lambda row: extract_and_combine_responses(row, topics, self.separator_output),
             axis=1
         )
         return df
-
-
-
 
