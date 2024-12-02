@@ -17,6 +17,9 @@ from modules.mesh_similarity_calculator import MeSHSimilarityCalculator
 from modules.content_similarity_calculator import ContentSimilarityCalculator
 from modules.expert_ranker import ExpertRanker
 from modules.expert_assigner import ExpertAssigner
+from modules.expert_profiler import ExpertProfiler
+from modules.research_type_similarity_calculator import ResearchTypeSimilarityCalculator
+from modules.feature_generator import FeatureGenerator
 
 class DataProcessingPipeline:
 
@@ -56,7 +59,9 @@ class DataProcessingPipeline:
             'publication_mesh_tagging': self._mesh_tag_publications,
             'similarity_computation': self._compute_similarity,
             'expert_ranking': self._rank_experts,
-            'expert_assignment': self._assign_experts
+            'expert_assignment': self._assign_experts,
+            'determine_seniority': self._determine_seniority,
+            'research_type_similarity_calculation': self._calculate_research_type_similarity
         }
 
     def _override_call_settings(self, call):
@@ -93,6 +98,9 @@ class DataProcessingPipeline:
         self.content_similarity_calculator = ContentSimilarityCalculator()
         self.expert_ranker = ExpertRanker()
         self.expert_assigner = ExpertAssigner()
+        self.expert_profiler = ExpertProfiler(self.config_manager)
+        self.research_type_similarity_calculator = ResearchTypeSimilarityCalculator(self.config_manager)
+        self.feature_generator = FeatureGenerator(self.config_manager)
 
     def _run_component(self, component_name, *args, **kwargs):
         """Run a single pipeline component."""
@@ -164,23 +172,24 @@ class DataProcessingPipeline:
             # Ensure expert data is loaded
             experts = self._load_expert_data()  
             print('Extracting publication titles using NER...')
-            expert_publication_titles = self.publication_extractor.extract_publication_titles(experts)
-            return expert_publication_titles
+            publications = self.publication_extractor.extract_publications(experts, config_get_publications)
+            self.data_saver.save_data(publications, self.file_publications_pipeline)
+            return publications
         except Exception as e:
             print(f"Error in _extract_publications: {e}")
             raise
 
-    def _retrieve_pubmed_data(self):
-        """Retrieve data from PubMed."""
-        try:
-            expert_publication_titles = self._extract_publications()
-            print('Retrieving PubMed data...')
-            publications = self.pubmed_retriever.fetch_publications(expert_publication_titles)
-            self.data_saver.save_data(publications, self.file_publications_pipeline)
-            return publications
-        except Exception as e:
-            print(f"Error in _retrieve_pubmed_data: {e}")
-            raise
+    # def _retrieve_pubmed_data(self):
+    #     """Retrieve data from PubMed."""
+    #     try:
+    #         expert_publication_titles = self._extract_publications()
+    #         print('Retrieving PubMed data...')
+    #         publications = self.pubmed_retriever.fetch_publications(expert_publication_titles)
+    #         self.data_saver.save_data(publications, self.file_publications_pipeline)
+    #         return publications
+    #     except Exception as e:
+    #         print(f"Error in _retrieve_pubmed_data: {e}")
+    #         raise
 
     def _classify_projects(self):
         """Classify projects with research areas and approaches."""
@@ -246,34 +255,31 @@ class DataProcessingPipeline:
     # In the case of publications we should consider the possibility to tag them or use the MeSH terms retrieved from PubMed
     # and tag only the publications that do not contain MeSH terms.
 
-    def _mesh_tag_projects(self):
+    def _mesh_tag_projects(self): # done
         """Tag projects with MeSH terms."""
         try:
             projects = self._load_project_data()
             print('Tagging projects with MeSH terms...')
-            mesh_labeler = MeSHLabeler(config_manager=self.config_manager)
             input_columns = self.config_manager.get('MESH_INPUT_COLUMNS_PROJECTS')
-            projects = mesh_labeler.label_with_mesh(projects, input_columns)
+            projects = self.mesh_labeler.label_with_mesh(projects, input_columns)
             self.data_saver.save_data(projects, self.file_projects_pipeline)
             return projects
         except Exception as e:
             print(f"Error in _mesh_tag_projects: {e}")
             raise
 
-    def _mesh_tag_publications(self):
+    def _mesh_tag_publications(self): # done
         """Tag publications with MeSH terms."""
         try:
             publications = self._enrich_publications()
             print('Tagging publications with MeSH terms...')
-            mesh_labeler = MeSHLabeler(config_manager=self.config_manager)
             input_columns = self.config_manager.get('MESH_INPUT_COLUMNS_PUBLICATIONS')
-            publications = mesh_labeler.label_with_mesh(publications, input_columns)
+            publications = self.mesh_labeler.label_with_mesh(publications, input_columns)
             self.data_saver.save_data(publications, self.file_publications_pipeline)
             return publications
         except Exception as e:
             print(f"Error in _mesh_tag_publications: {e}")
             raise
-
 
     def _compute_similarity(self):
         """Compute similarity scores for experts and projects."""
@@ -282,7 +288,7 @@ class DataProcessingPipeline:
             projects = self._load_project_data()
             experts = self._load_expert_data()
             publications = self._enrich_publications()
-            label_similarity_scores = self.label_similarity_calculator.compute_similarity(experts, projects)
+            label_similarity_scores = self.label_similarity_calculator.compute_similarity(self.config_manager, experts, projects)
             mesh_similarity_scores = self.mesh_similarity_calculator.compute_expert_project_similarity(publications, projects)
             content_similarity_scores = self.content_similarity_calculator.compute_similarity(publications, projects)
             return label_similarity_scores, mesh_similarity_scores, content_similarity_scores
@@ -321,4 +327,45 @@ class DataProcessingPipeline:
             print(f"Error in _assign_experts: {e}")
             raise
 
+    def _determine_seniority(self): # done
+        """Determine seniority levels for experts."""
+        try:
+            print('Determining seniority levels for experts...')
+            experts = self._load_expert_data()
+            experts = self.expert_profiler.preprocess_data(experts)
+            pub_threshold, cits_threshold = self.expert_profiler.calculate_thresholds(experts)
+            experts['SENIORITY'] = experts.apply(lambda row: self.expert_profiler.determine_seniority(row, pub_threshold, cits_threshold), axis=1)
+            self.data_saver.save_data(experts, self.file_experts_pipeline)
+            return experts
+        except Exception as e:
+            print(f"Error in _determine_seniority: {e}")
+            raise
 
+    def _calculate_research_type_similarity(self): # to be changed based on modifications to FeatureGenerator
+        """Calculate similarity between experts and projects based on research types."""
+        try:
+            print("Calculating research type similarity between experts and projects...")
+            projects = self._load_project_data()
+            experts = self._load_expert_data()
+            df_content_similarity_scores, df_mesh_scores, df_jaccard_similarity_scores = self.feature_generator.load_data()
+            df_projects, df_experts, df_content_similarity_scores, df_mesh_scores, df_jaccard_similarity_scores = self.feature_generator.preprocess_data(
+                df_projects=projects, 
+                df_experts=experts, 
+                df_content_similarity_scores=df_content_similarity_scores,
+                df_mesh_scores=df_mesh_scores,
+                df_jaccard_similarity_scores=df_jaccard_similarity_scores
+            )
+            df_combined = self.feature_generator.combine_data(
+                df_projects=df_projects,
+                df_experts=df_experts,
+                df_content_similarity_scores=df_content_similarity_scores,
+                df_mesh_scores=df_mesh_scores,
+                df_jaccard_similarity_scores=df_jaccard_similarity_scores
+            )
+            df_combined = self.research_type_similarity_calculator.calculate_similarity_scores(df_combined)
+            df_combined = self.feature_generator.reorder_columns(df_combined)
+            self.feature_generator.save_combined_data(df_combined)
+            return df_combined
+        except Exception as e:
+            print(f"Error in _calculate_research_type_similarity: {e}")
+            raise

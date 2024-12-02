@@ -59,7 +59,8 @@ def main():
     config_manager = ConfigManager([
         'configs.config_general',
         'configs.config_llm',
-        'configs.config_get_publications'
+        'configs.config_get_publications',
+        'configs.config_research_type_similarity'
     ])
     
     # Print all configurations for debugging.
