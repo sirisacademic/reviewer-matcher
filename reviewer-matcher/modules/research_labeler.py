@@ -1,3 +1,4 @@
+import sys
 import pandas as pd
 from tqdm import tqdm
 from .llm_handler import LLMHandler
@@ -33,7 +34,7 @@ class ResearchLabeler(LLMHandler):
         Returns:
             pd.Series: Combined labeled topics for each project.
         """
-        tqdm.pandas()
+        tqdm.pandas(desc='Topic labelling', file=sys.stdout)
         # Load prompt.
         prompt = self._load_prompt(prompt_file)
         # Get responses.

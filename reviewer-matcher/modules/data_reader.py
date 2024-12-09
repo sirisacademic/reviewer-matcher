@@ -27,31 +27,32 @@ class DataReader:
     def load_data(self):
         '''Load and process projects/expert data with specific transformations.'''
         raw_data = load_file(self.input_path, self.file_type)
-        self.read_data(raw_data)
-        self.extract_multi_column_values(raw_data)
-        self.apply_value_mappings()
-        self.add_identifier_column()
+        self._read_data(raw_data)
+        self._extract_multi_column_values(raw_data)
+        self._apply_value_mappings()
+        self._add_identifier_column()
         return self.data
 
     def _get_header_values(self, raw_data):
         '''Get a list of column headers or values from a specific row depending on position_first_data_row.'''
         if self.position_header_row == 0:
-            # If first_data_row is 0, return the column names.
             return list(raw_data.columns)
         else:
             # Otherwise, get values from the specified row.
             return raw_data.iloc[self.position_header_row].tolist()
 
-    def read_data(self, raw_data):
+    def _read_data(self, raw_data):
         '''Map columns to standardized names using the settings.'''
         self.header = self._get_header_values(raw_data)
-        data_rows = raw_data.iloc[self.position_first_data_row:].values
+        # We always need to consider one position before as the first "" will always be the header.
+        position_first_data_row = max(self.position_first_data_row-1, 0)
+        data_rows = raw_data.iloc[position_first_data_row:].values
         # Map project column names and values.
         column_indices = {key: column_letter_to_index(col_letter) for key, col_letter in self.column_mappings.items()}
         columns = [column_indices[key] for key in self.column_mappings.keys()]
         self.data = pd.DataFrame([[row[idx] for idx in columns] for row in data_rows], columns=self.column_mappings.keys())
 
-    def extract_multi_column_values(self, raw_data):
+    def _extract_multi_column_values(self, raw_data):
         '''Combine column headers into a single field for specified column ranges where the cell value is not empty or 0.'''
         for key, value_map in self.multi_column_values.items():
             # Extract the range of columns to join based on the Excel-style notation
@@ -70,7 +71,7 @@ class DataReader:
                 axis=1
             )
 
-    def apply_value_mappings(self):
+    def _apply_value_mappings(self):
         '''Replace values in specified columns based on mappings in settings.'''
         # Replace values in relevant columns.
         for key, value_map in self.value_mappings.items():
@@ -81,7 +82,7 @@ class DataReader:
             input_separator = self.separator_settings.get(key, ';') if key not in self.multi_column_values else self.separator_output
             self.data = replace_separators(self.data, key, input_separator, self.separator_output) 
 
-    def add_identifier_column(self):
+    def _add_identifier_column(self):
         '''Add a sequential ID column if it does not already exist.'''
         if self.id_column_name not in self.data.columns:
             self.data.insert(0, self.id_column_name, range(1, len(self.data) + 1))

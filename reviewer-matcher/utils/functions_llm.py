@@ -1,9 +1,12 @@
+# File: functions_llm.py
+
+import sys
 import json
 import re
 import time
 import requests
 
-from tenacity import Retrying, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import Retrying, stop_after_attempt, wait_exponential, retry_if_exception_type, before_sleep
 from requests.exceptions import RequestException
 
 def expand_abbreviations(data, abbreviations, sections=[]):
@@ -187,11 +190,12 @@ def get_local_model_response(pipe, generation_args, prompt, max_retries=3, retry
       output = pipe(messages, **generation_args)
       return output[0]['generated_text']
     except Exception as e:
-      print(f'Error calling model: {e}. Retrying (retry attempt {attempt + 1}/{max_retries})')
+      print(f'Error calling model: {e}. Retrying (retry attempt {attempt + 1}/{max_retries})', file=sys.stderr)
       time.sleep(retry_delay)
   print('Failed to get a response from the model after multiple attempts.')
   return None
 
+"""
 def make_external_request_with_retry(external_model_url, headers, filtered_args, max_retries=5, retry_delay=2, initial_timeout=30):
 #----------------------------------------------------------
   retry_strategy = Retrying(
@@ -211,11 +215,42 @@ def make_external_request_with_retry(external_model_url, headers, filtered_args,
       return response
     except RequestException as e:
       # Print retry attempt only if there is an error
-      print(f"Attempt {attempt.retry_state.attempt_number+1}/{max_retries}: Failed with error: {e}. Retrying with timeout {current_timeout} seconds...")
+      print(f"Attempt {attempt.retry_state.attempt_number+1}/{max_retries}: Failed with error: {e}. Retrying with timeout {current_timeout} seconds...", file=sys.stderr)
   # If the function exits the loop without a successful response
   print("Failed to get a response from the external model after multiple attempts.")
   return None
+"""
 
+def make_external_request_with_retry(external_model_url, headers, filtered_args, max_retries=5, retry_delay=2, initial_timeout=30):
+    def before_sleep_print(retry_state):
+        print(f"Retrying in {retry_state.next_action.sleep} seconds...", file=sys.stderr)
+    retry_strategy = Retrying(
+        stop=stop_after_attempt(max_retries),
+        wait=wait_exponential(multiplier=retry_delay, min=retry_delay, max=retry_delay * 4),
+        retry=retry_if_exception_type((RequestException, ValueError)),
+        before_sleep=before_sleep_print
+    )
+    for attempt in retry_strategy:
+        # Calculate the current timeout value with exponential backoff for each retry
+        current_timeout = initial_timeout * (2 ** attempt.retry_state.attempt_number)
+        #print(f"Attempt {attempt.retry_state.attempt_number+1}/{max_retries}: Trying with timeout {current_timeout} seconds...", file=sys.stderr)
+        #print(f"Request Data: {filtered_args}")
+        try:
+            # Make the request
+            response = requests.post(external_model_url, headers=headers, json=filtered_args, timeout=current_timeout)
+            # If the request is successful, return the response
+            return response
+        except RequestException as e:
+            # Print retry attempt only if there is an error
+            print(f"Attempt {attempt.retry_state.attempt_number+1}/{max_retries}: Failed with error: {e}. Retrying with timeout {current_timeout} seconds...", file=sys.stderr)
+        except ValueError as e:
+            print(f"Attempt {attempt.retry_state.attempt_number+1}/{max_retries}: Failed with error: {e}. Retrying with timeout {current_timeout} seconds...", file=sys.stderr)
+    # If the function exits the loop without a successful response
+    print("Failed to get a response from the external model after multiple attempts.")
+    print("Failed to get a response from the external model after multiple attempts.", file=sys.stderr)
+    # Fallback mechanism: Log the problematic data for manual review
+    print(f"Problematic data: {filtered_args}", file=sys.stderr)
+    return None
 
 # Get response using an externally-hosted LLM.
 #----------------------------------------------------------
@@ -283,11 +318,11 @@ def extract_and_parse_json(input_string, default_response):
         validated_data = validate_response(parsed_data, default_response)
         return validated_data
       except json.JSONDecodeError as e:
-        print(f'Error when decoding string: {input_string}')
-        print(f'Error parsing JSON: {e}')
+        print(f'Error when decoding string: {input_string}', file=sys.stderr)
+        print(f'Error parsing JSON: {e}', file=sys.stderr)
     else:
-      print(f'Error when decoding string: {input_string}')
-      print('No JSON code block found.')
+      print(f'Error when decoding string: {input_string}', file=sys.stderr)
+      print('No JSON code block found.', file=sys.stderr)
   # Return the default expected structure with empty values if parsing fails
   return None
 
@@ -331,7 +366,6 @@ def label_by_topic(pipe, generation_args, prompt, title, abstract, topics, max_t
   Returns:
   dict: Combined results of labeled topics across all chunks.
   """
-  print(f'max_topics={max_topics}')
   def chunk_list(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
@@ -351,13 +385,14 @@ def label_by_topic(pipe, generation_args, prompt, title, abstract, topics, max_t
     default_structure_labels = generate_default_structure_labels(topics_chunk)
     for attempt in range(max_retries):
       if attempt > 0:
-        print(f'Failed to parse response. Retrying... (retry {attempt + 1}/{max_retries})')
+        print(f'Failed to parse response. Retrying... (retry {attempt + 1}/{max_retries})', file=sys.stderr)
       model_response = get_model_response(pipe, generation_args, prompt_text, max_retries, retry_delay)
       #print(model_response)
       parsed_data = extract_and_parse_json(model_response, default_structure_labels)
       if parsed_data == None and attempt == max_retries-1:
         parsed_data = default_structure_labels
-        print(f'Returning the default values as the data could not be obtained after {max_retries} attempts.')
+        print(f'Returning the default values as the data could not be obtained after {max_retries} attempts for prompt:')
+        print(prompt)
       else:
         for key, value in parsed_data.items():
           if key in combined_results:
@@ -403,10 +438,11 @@ def extract_content(pipe, generation_args, prompt, default_response, max_retries
     parsed_data = extract_and_parse_json(model_response, default_response)
     if parsed_data is not None:
       return parsed_data
-    print(f'Failed to parse response. Retrying... (retry {attempt + 1}/{max_retries})')
+    print(f'Failed to parse response. Retrying... (retry {attempt + 1}/{max_retries})', file=sys.stderr)
     time.sleep(retry_delay)
   # Return expected structure if all retries fail
-  print('Failed to get valid summarized content after multiple attempts.')
+  print('Failed to get valid summarized content after multiple attempts for prompt:')
+  print(prompt)
   return default_response
   
 

@@ -11,6 +11,10 @@
 #2022-Salut_Cardiovascular
 #2023-Salut_Sexual_i_Reproductiva
 
+# Run in TEST_MODE
+TEST_MODE = False
+TEST_NUMBER = 10
+
 # Call to be processed (used to retrieve the configuration, URLs, etc).
 CALL = '2021-Salut_Mental'
 
@@ -22,6 +26,9 @@ DATA_PATH = f'{CALL_PATH}/data'
 
 # Mappings path.
 MAPPINGS_PATH = f'{CALL_PATH}/mappings'
+
+# Output scores path.
+SCORES_PATH = f'{CALL_PATH}/scores'
 
 # JSON file with column mappings for projects.
 # Relative to MAPPINGS_PATH !
@@ -41,7 +48,8 @@ FILE_NAME_EXPERTS = 'experts.pkl'
 
 # Output file expert publications.
 # Relative to DATA_PATH !
-FILE_NAME_PUBLICATIONS = 'expert_publications.pkl'
+FILE_NAME_PUBLICATIONS = 'expert_publications_openalex.pkl'
+#FILE_NAME_PUBLICATIONS = 'expert_publications_pubmed.pkl'
 
 # Combined projects.
 FILE_PATH_PROJECTS_ALL_YEARS = 'calls/all_years/projects.pkl'
@@ -55,13 +63,37 @@ ID_COLUMN_NAME = 'ID'
 # HuggingFace token.
 HF_TOKEN = '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'
 
+SPACY_MODEL = 'en_core_web_sm'
+
+MESH_MODEL = 'Wellcome/WellcomeBertMesh'
+
 # MeSH Labeler Configuration.
-MESH_EXCLUDE_TERMS = ['Animals', 'Humans', 'Female', 'Male']  # Terms to exclude from MeSH labeling
+# Terms to exclude from MeSH labeling
+MESH_EXCLUDE_TERMS = [
+  'Animals',
+  'Humans',
+  'Female',
+  'Male',
+  'Adult',
+  'Young Adult',
+  'Infant',
+  'Child',
+  'Child, Preschool',
+  'Adolescent',
+  'Aged',
+  'Middle Aged',
+  'Anatomy',
+  'Organism',
+  'Cell',
+  'Tissue',
+  'Organ',
+  'Disease'
+]  
 MESH_THRESHOLD = 0.6  # Probability threshold for MeSH term inclusion
 
+# Excluding the title because for some reason it generates a long list of unrelated MeSH terms in some cases.
 # Input column configurations for MeSH tagging.
 MESH_INPUT_COLUMNS_PROJECTS = {
-    'TITLE': 'string',
     'ABSTRACT': 'string',
     'RESEARCH_TOPIC': 'string',
     'OBJECTIVES': 'string',
@@ -69,27 +101,16 @@ MESH_INPUT_COLUMNS_PROJECTS = {
 }
 
 MESH_INPUT_COLUMNS_PUBLICATIONS = {
-    'TITLE_PUBMED': 'string',
-    'ABSTRACT_PUBMED': 'string',
+    'ABSTRACT': 'string',
     'RESEARCH_TOPIC': 'string',
     'OBJECTIVES': 'string',
     'METHODS': 'list'
 }
 
-# OpenAlex API Key and Base URL.
+MESH_COMBINED_OUTPUT_COLUMN = 'MESH_EXTRACTED'
 
-# OPENALEX_API_KEY = ...
-OPENALEX_BASE_URL = "https://api.openalex.org"
+RESEARCH_TOPIC_COLUMN = 'RESEARCH_TOPIC'
+METHODS_SPECIFIC_COLUMN = 'METHODS_SPECIFIC'
+METHODS_COLUMN = 'METHODS'
+OBJECTIVES_COLUMN = 'OBJECTIVES'
 
-# Setting of values for low, middle and high seniority.
-
-SENIORITY_UNDETERMINED = 0
-SENIORITY_LOW = 1
-SENIORITY_MIDDLE = 2
-SENIORITY_HIGH = 3
-
-NUM_PUBS_TOP_PERC_SENIORITY = 30
-NUM_CITATIONS_TOP_PERC_SENIORITY = 30
-OUTPUT_FILE_EXPERT_PROJECT_JACCARD_SIMILARITY = f'{DATA_PATH}/{CALL}/scores/expert_project_jaccard_similarity_scores.pkl'
-OUTPUT_FILE_EXPERT_PROJECT_SEMANTIC_SIMILARITY = f'{DATA_PATH}/{CALL}/scores/expert_project_semantic_similarity_scores.pkl'
-OUTPUT_FILE_EXPERT_PROJECT_MESH_SIMILARITY = f'{DATA_PATH}/{CALL}/scores/expert_project_mesh_similarity_scores.pkl'

@@ -1,101 +1,116 @@
 import pandas as pd
-import abbreviations
-import re
-from sklearn.preprocessing import MultiLabelBinarizer
-from sklearn.metrics import jaccard_score
-
 from tqdm import tqdm
+from sklearn.feature_extraction.text import TfidfVectorizer
+from utils.functions_similarity import (
+    convert_to_list,
+    calculate_jaccard_similarity,
+    calculate_dice_similarity,
+    one_hot_encode,
+    calculate_weighted_jaccard_similarity,
+    calculate_overlap_coefficient
+)
 
 class LabelSimilarityCalculator:
     def __init__(self, config_manager):
-        # Configurations read from config file handled by config_manager.
+        """Initialize the LabelSimilarityCalculator with configuration and required settings."""
         self.separator_output = config_manager.get('SEPARATOR_VALUES_OUTPUT', '|')
-        self.OUTPUT_FILE_EXPERT_PROJECT_JACCARD_SIMILARITY  = config_manager.get('OUTPUT_FILE_EXPERT_PROJECT_JACCARD_SIMILARITY')
-        # self.expert_publications = experts
-        # self.projects = projects
-        
-    def convert_to_list(self, column_value):
-        '''
-        Convert a column of strings to lists, removing empty or whitespace-only entries
-        '''
-
-        if pd.isna(column_value) or column_value == '':
-            return []
-        return [item.strip() for item in column_value.split(self.separator_output) if item.strip() != '']
+        self.col_id_project = config_manager.get('ID_COLUMN_NAME', 'ID')
+        self.col_id_expert = config_manager.get('ID_COLUMN_NAME', 'ID')
+        self.research_areas_column = config_manager.get('RESEARCH_AREAS_COLUMN', 'RESEARCH_AREAS')
+        self.research_approaches_column = config_manager.get('RESEARCH_APPROACHES_COLUMN', 'RESEARCH_APPROACHES')
+        self.tfidf_vectorizer = TfidfVectorizer(tokenizer=lambda x: x.split(self.separator_output))
 
     def compute_similarity(self, experts_data, projects_data):
-        '''Compute overlap in expert-project research areas and approaches based on Jaccard similarity.'''
-
-        # Extract all unique research areas and approaches
-        all_research_areas = set()
-        all_research_approaches = set()
-
-        for col in ['RESEARCH_AREAS', 'RESEARCH_APPROACHES']:
-            set_terms = all_research_areas if col == 'RESEARCH_AREAS' else all_research_approaches
-            set_terms.update(
-                term.strip() for terms in pd.concat([experts_data[col], projects_data[col]]).dropna().apply(lambda x: x.split(self.separator_output))
-                for term in terms
-                if term.strip()
-            )
-
-        all_research_areas = list(all_research_areas)
-        all_research_approaches = list(all_research_approaches)
-
-        # One-Hot encoding for experts and projects
-
-        # Initialize one-hot encoder
-        mlb_areas = MultiLabelBinarizer(classes=all_research_areas)
-        mlb_approaches = MultiLabelBinarizer(classes=all_research_approaches)
-
-        # Convert and one-hot encode experts and projects' research areas
-        expert_areas_one_hot = mlb_areas.fit_transform(experts_data['RESEARCH_AREAS'].apply(lambda x: self.convert_to_list(x)))
-        project_areas_one_hot = mlb_areas.transform(projects_data['RESEARCH_AREAS'].apply(lambda x: self.convert_to_list(x)))
-
-        # Convert and one-hot encode experts and projects' for research approaches
-        expert_approaches_one_hot = mlb_approaches.fit_transform(experts_data['RESEARCH_APPROACHES'].apply(lambda x: self.convert_to_list(x)))
-        project_approaches_one_hot = mlb_approaches.transform(projects_data['RESEARCH_APPROACHES'].apply(lambda x: self.convert_to_list(x)))
-
-        # Calculate Jaccard similarity
-
-        # Initialize list to store similarity results
-        expert_project_jaccard_similarity_scores = []
-
-        # Iterate over all expert-project pairs
+        """Compute various similarity scores between experts and projects."""
+        # Prepare unique terms.
+        all_research_areas = self._prepare_unique_terms(experts_data, projects_data, self.research_areas_column)
+        all_research_approaches = self._prepare_unique_terms(experts_data, projects_data, self.research_approaches_column)
+        # One-hot encode data.
+        experts_encoded = {
+            'areas': one_hot_encode(experts_data, self.research_areas_column, all_research_areas, self.separator_output),
+            'approaches': one_hot_encode(experts_data, self.research_approaches_column, all_research_approaches, self.separator_output),
+        }
+        projects_encoded = {
+            'areas': one_hot_encode(projects_data, self.research_areas_column, all_research_areas, self.separator_output),
+            'approaches': one_hot_encode(projects_data, self.research_approaches_column, all_research_approaches, self.separator_output),
+        }
+        # Compute TF-IDF matrices.
+        tfidf_experts_areas = self._compute_tfidf(experts_data, self.research_areas_column)
+        tfidf_projects_areas = self._compute_tfidf(projects_data, self.research_areas_column)
+        tfidf_experts_approaches = self._compute_tfidf(experts_data, self.research_approaches_column)
+        tfidf_projects_approaches = self._compute_tfidf(projects_data, self.research_approaches_column)
+        # Calculate similarity.
+        similarity_scores = []
         total_iterations = len(experts_data) * len(projects_data)
-
-        with tqdm(total=total_iterations, desc="Calculating Jaccard similarity scores") as pbar:
+        with tqdm(total=total_iterations, desc="Calculating similarity scores") as pbar:
             for expert_index, expert_row in experts_data.iterrows():
                 for project_index, project_row in projects_data.iterrows():
                     pbar.update(1)
-
-                    # Calculate Jaccard Similarity for Research Areas
-                    area_similarity = jaccard_score(
-                        expert_areas_one_hot[expert_index],
-                        project_areas_one_hot[project_index],
-                        average='binary'
+                    # Convert research areas/approaches to sets.
+                    expert_areas = set(convert_to_list(expert_row[self.research_areas_column], self.separator_output))
+                    project_areas = set(convert_to_list(project_row[self.research_areas_column], self.separator_output))
+                    expert_approaches = set(convert_to_list(expert_row[self.research_approaches_column], self.separator_output))
+                    project_approaches = set(convert_to_list(project_row[self.research_approaches_column], self.separator_output))
+                    # Jaccard and Dice.
+                    area_jaccard = calculate_jaccard_similarity(
+                        experts_encoded['areas'][expert_index],
+                        projects_encoded['areas'][project_index]
                     )
-
-                    # Calculate Jaccard Similarity for Research Approaches
-                    approach_similarity = jaccard_score(
-                        expert_approaches_one_hot[expert_index],
-                        project_approaches_one_hot[project_index],
-                        average='binary'
+                    approach_jaccard = calculate_jaccard_similarity(
+                        experts_encoded['approaches'][expert_index],
+                        projects_encoded['approaches'][project_index]
                     )
-
-                    # Store the similarity scores
-                    expert_project_jaccard_similarity_scores.append({
-                        'Expert_ID': expert_row['ID'],
-                        'Project_ID': project_row['ID'],
-                        'Research_Areas_Jaccard_Similarity': area_similarity,
-                        'Research_Approaches_Jaccard_Similarity': approach_similarity,
+                    area_dice = calculate_dice_similarity(
+                        experts_encoded['areas'][expert_index],
+                        projects_encoded['areas'][project_index]
+                    )
+                    approach_dice = calculate_dice_similarity(
+                        experts_encoded['approaches'][expert_index],
+                        projects_encoded['approaches'][project_index]
+                    )
+                    # TF-IDF weighted Jaccard.
+                    area_weighted_jaccard = calculate_weighted_jaccard_similarity(
+                        tfidf_experts_areas, expert_index, project_index
+                    )
+                    approach_weighted_jaccard = calculate_weighted_jaccard_similarity(
+                        tfidf_experts_approaches, expert_index, project_index
+                    )
+                    # Overlap coefficient.
+                    area_overlap = calculate_overlap_coefficient(expert_areas, project_areas)
+                    approach_overlap = calculate_overlap_coefficient(expert_approaches, project_approaches)
+                    # Append scores.
+                    # TODO: Get output column names for experts/projects from configuration files!!!
+                    similarity_scores.append({
+                        'Expert_ID': expert_row[self.col_id_expert],
+                        'Project_ID': project_row[self.col_id_project],
+                        'Research_Areas_Jaccard_Similarity': area_jaccard,
+                        'Research_Areas_Dice_Similarity': area_dice,
+                        'Research_Areas_Weighted_Jaccard_Similarity': area_weighted_jaccard,
+                        'Research_Areas_Overlap_Coefficient': area_overlap,
+                        'Research_Approaches_Jaccard_Similarity': approach_jaccard,
+                        'Research_Approaches_Dice_Similarity': approach_dice,
+                        'Research_Approaches_Weighted_Jaccard_Similarity': approach_weighted_jaccard,
+                        'Research_Approaches_Overlap_Coefficient': approach_overlap,
                     })
+        # Convert results to DataFrame
+        expert_project_scores = pd.DataFrame(similarity_scores)
+        # Return similarity scores
+        return expert_project_scores
 
-        # Convert to DataFrame
-        df_jaccard_similarity_scores = pd.DataFrame(expert_project_jaccard_similarity_scores)
+    def _prepare_unique_terms(self, experts_data, projects_data, column):
+        """Collect all unique terms from the given column across experts and projects datasets."""
+        combined_terms = pd.concat([experts_data[column], projects_data[column]]).dropna()
+        unique_terms = set(
+            term.strip() for terms in combined_terms.apply(lambda x: convert_to_list(x, self.separator_output))
+            for term in terms
+        )
+        return list(unique_terms)
 
-        # Save the similarity scores to a file for further analysis
-        df_jaccard_similarity_scores.to_pickle(self.OUTPUT_FILE_EXPERT_PROJECT_JACCARD_SIMILARITY)
-        print(f'Expert-project Jaccard similarity scores saved to {self.OUTPUT_FILE_EXPERT_PROJECT_JACCARD_SIMILARITY}')
-
-        return df_jaccard_similarity_scores
+    def _compute_tfidf(self, data, column):
+        """Compute the TF-IDF matrix for a given column in the dataset."""
+        # Preprocess the column to join lists into strings with space-separated terms.
+        preprocessed_column = data[column].apply(
+            lambda x: ' '.join([f'"{term}"' for term in convert_to_list(x, self.separator_output)])
+        ).fillna('')  # Convert lists into space-separated strings and handle NaN
+        return self.tfidf_vectorizer.fit_transform(preprocessed_column)
 

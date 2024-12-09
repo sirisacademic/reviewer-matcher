@@ -6,17 +6,20 @@ import pickle
 from datetime import datetime
 
 class DataSaver:
-    def __init__(self, config_manager, test_mode=False):
+    def __init__(self, config_manager):
         # Configurations read from config file handled by config_manager.
-        self.output_dir = config_manager.get('DATA_PATH')
+        self.default_output_dir = config_manager.get('DATA_PATH')
         self.separator = config_manager.get('SEPARATOR_VALUES_OUTPUT')
-        self.test_mode = test_mode
+        self.test_mode = config_manager.get('TEST_MODE', False)
         
-    def save_data(self, df, file_name, file_type=None, add_timestamp=False, verbose=True):
+    def save_data(self, df, file_name, output_dir=None, file_type=None, add_timestamp=False, verbose=True):
         '''Save a DataFrame to a specified file, supporting Excel, TSV, Pickle, and Parquet formats.'''
         # Get file extension and determine the file path
         extension = os.path.splitext(file_name)[-1].lower().strip('.')
-        file_path = self._get_filepath(file_name, extension, add_timestamp)
+        output_dir = self.default_output_dir if output_dir is None else output_dir
+        file_path = self._get_filepath(output_dir, file_name, extension, add_timestamp)
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         # Determine file type from extension if not provided
         file_type = file_type or {
             'xlsx': 'excel', 'xls': 'excel',
@@ -39,7 +42,7 @@ class DataSaver:
         if verbose:
             print(f'Data saved to {file_path}')
           
-    def _get_filepath(self, file_name, extension, add_timestamp):
+    def _get_filepath(self, output_dir, file_name, extension, add_timestamp):
         '''Generate the full file path, optionally adding a timestamp for uniqueness.'''
         if add_timestamp:
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -49,5 +52,5 @@ class DataSaver:
         # Append `_test` if running in test mode and not already a test file
         if self.test_mode and "_test" not in file_name:
             file_name = file_name.replace(f".{extension}", f"_test.{extension}")
-        return os.path.join(self.output_dir, file_name)
+        return os.path.join(output_dir, file_name)
 
