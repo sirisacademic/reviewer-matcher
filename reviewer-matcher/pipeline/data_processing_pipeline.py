@@ -1,25 +1,28 @@
+# File: data_processing_pipeline.py
+
 import os
 
 from core.settings_manager import SettingsManager
 
 from utils.functions_read_data import load_file, extract_values_column
 
-# !!!! Commenting modules with errors to be able to run the others !!!!    
 from modules.data_reader import DataReader
 from modules.data_saver import DataSaver
-#from modules.publication_extractor import PublicationExtractor
-#from modules.pubmed_retriever import PubMedRetriever
+from modules.publication_handler import PublicationHandler
 from modules.content_summarizer import ContentSummarizer
 from modules.research_labeler import ResearchLabeler
-#from modules.mesh_labeler import MeSHLabeler
-#from modules.label_similarity_calculator import LabelSimilarityCalculator
-#from modules.mesh_similarity_calculator import MeSHSimilarityCalculator
-#from modules.content_similarity_calculator import ContentSimilarityCalculator
+from modules.mesh_labeler import MeSHLabeler
+from modules.label_similarity_calculator import LabelSimilarityCalculator
+from modules.mesh_similarity_calculator import MeSHSimilarityCalculator
+from modules.content_similarity_calculator import ContentSimilarityCalculator
+from modules.research_type_similarity_calculator import ResearchTypeSimilarityCalculator
+# !!!! This is to be integrated into the ExpertProfiler class. !!!!
+from modules.expert_seniority_calculator import ExpertSeniorityCalculator
 #from modules.expert_ranker import ExpertRanker
 #from modules.expert_assigner import ExpertAssigner
-#from modules.expert_profiler import ExpertProfiler
-#from modules.research_type_similarity_calculator import ResearchTypeSimilarityCalculator
 #from modules.feature_generator import FeatureGenerator
+#from modules.expert_profiler import ExpertProfiler
+
 
 class DataProcessingPipeline:
 
@@ -27,46 +30,64 @@ class DataProcessingPipeline:
         """
         Initialize pipeline with configuration, settings, and available components.
         """
+        # Set test mode and number.
         self.test_mode = test_mode
         self.test_number = test_number
+        # Set components to run.
         self.all_components = all_components or []
+        # Load configuration manager.
         self.config_manager = config_manager
+        # Override TEST_MODE and TEST_NUMBER.
+        self.config_manager.set('TEST_MODE', test_mode, namespace='config_general')
+        self.config_manager.set('TEST_NUMBER', test_number, namespace='config_general')
         # Override CALL if specified
         if call:
             self._override_call_settings(call)
+        # Data for experts, projects, publications.
+        self.projects = None
+        self.experts = None
+        self.publications = None
+        # Data for similarity scores.
+        self.label_similarity_scores = None
+        self.mesh_similarity_scores = None
+        self.content_similarity_scores = None
         # Initialize paths
         self.data_path = self.config_manager.get('DATA_PATH')
         self.file_projects_pipeline = self.config_manager.get('FILE_NAME_PROJECTS')
         self.file_experts_pipeline = self.config_manager.get('FILE_NAME_EXPERTS')
         self.file_publications_pipeline = self.config_manager.get('FILE_NAME_PUBLICATIONS')
+        self.file_research_type_similarity_scores = config_manager.get('FILE_EXPERT_PROJECT_RESEARCH_TYPE_SIMILARITY')
+        self.file_label_similarity_scores  = config_manager.get('FILE_EXPERT_PROJECT_LABEL_SIMILARITY')
+        self.file_mesh_similarity_scores = config_manager.get('FILE_EXPERT_PROJECT_MESH_SIMILARITY') 
+        self.file_content_similarity_scores = config_manager.get('FILE_EXPERT_PROJECT_CONTENT_SIMILARITY')
         # Initialize settings and modules
         self._initialize_settings()
         self._initialize_modules()
         # Component mapping
         self.component_map = {
-            'project_data_loading': self._load_project_data,
-            'expert_data_loading': self._load_expert_data,
-            'publication_titles_extraction': self._extract_publication_titles,
-            #'pubmed_retrieval': self._retrieve_pubmed_data,
-            'project_summarization': self._summarize_projects,
-            #'publication_summarization': self._summarize_publications,
+            # No need to run the data loading components explicitely as they will be invoked if necessary.
+            # Included only for testing purposes.
+            'project_data_loading': self._get_projects,
+            'expert_data_loading': self._get_experts,
+            'publication_data_loading': self._get_publications,
             'project_classification': self._classify_projects,
+            'project_summarization': self._summarize_projects,
             'project_mesh_tagging': self._mesh_tag_projects,
+            'publication_summarization': self._summarize_publications,
             'publication_mesh_tagging': self._mesh_tag_publications,
-            'similarity_computation': self._compute_similarity,
+            'similarity_computation': self._compute_similarity_scores,
             'expert_ranking': self._rank_experts,
-            'expert_assignment': self._assign_experts,
-            'determine_seniority': self._determine_seniority,
-            'research_type_similarity_calculation': self._calculate_research_type_similarity
+            'expert_assignment': self._assign_experts
         }
 
     def _override_call_settings(self, call):
         """Override CALL-specific settings."""
-        self.config_manager.set('CALL', call)
         call_path = f'calls/{call}'
-        self.config_manager.set('CALL_PATH', call_path)
-        self.config_manager.set('DATA_PATH', f'{call_path}/data')
-        self.config_manager.set('MAPPINGS_PATH', f'{call_path}/mappings')
+        self.config_manager.set('CALL', call, namespace='config_general')
+        self.config_manager.set('CALL_PATH', call_path, namespace='config_general')
+        self.config_manager.set('DATA_PATH', f'{call_path}/data', namespace='config_general')
+        self.config_manager.set('MAPPINGS_PATH', f'{call_path}/mappings', namespace='config_general')
+        self.config_manager.set('SCORES_PATH', f'{call_path}/scores', namespace='config_general')
 
     def _initialize_settings(self):
         """Initialize settings for projects and experts."""
@@ -80,20 +101,21 @@ class DataProcessingPipeline:
 
     def _initialize_modules(self):
         """Initialize all pipeline modules."""
-        self.data_saver = DataSaver(self.config_manager, self.test_mode)
-        #self.pubmed_retriever = PubMedRetriever(self.config_manager)
-        #self.publication_extractor = PublicationExtractor(self.config_manager)
+        self.data_saver = DataSaver(self.config_manager)
+        self.publication_handler = PublicationHandler(self.config_manager)
         self.research_labeler = ResearchLabeler(self.config_manager)
         self.content_summarizer = ContentSummarizer(self.config_manager)
-        #self.mesh_labeler = MeSHLabeler(self.config_manager)
-        #self.label_similarity_calculator = LabelSimilarityCalculator()
-        #self.mesh_similarity_calculator = MeSHSimilarityCalculator()
-        #self.content_similarity_calculator = ContentSimilarityCalculator()
-        #self.expert_ranker = ExpertRanker()
-        #self.expert_assigner = ExpertAssigner()
-        #self.expert_profiler = ExpertProfiler(self.config_manager)
-        #self.research_type_similarity_calculator = ResearchTypeSimilarityCalculator(self.config_manager)
+        self.mesh_labeler = MeSHLabeler(self.config_manager)
+        self.label_similarity_calculator = LabelSimilarityCalculator(self.config_manager)
+        self.mesh_similarity_calculator = MeSHSimilarityCalculator(self.config_manager)
+        self.content_similarity_calculator = ContentSimilarityCalculator(self.config_manager)
+        self.research_type_similarity_calculator = ResearchTypeSimilarityCalculator(self.config_manager)
+        # !!!! This is to be integrated into the ExpertProfiler class. !!!!
+        self.expert_seniority_calculator = ExpertSeniorityCalculator(self.config_manager)
+        #self.expert_ranker = ExpertRanker(self.config_manager)
+        #self.expert_assigner = ExpertAssigner(self.config_manager)
         #self.feature_generator = FeatureGenerator(self.config_manager)
+        #self.expert_profiler = ExpertProfiler(self.config_manager)
 
     def _run_component(self, component_name, *args, **kwargs):
         """Run a single pipeline component."""
@@ -121,90 +143,101 @@ class DataProcessingPipeline:
 
     # ======== Process and/or load input data (partially processed or raw) ========
 
-    def _load_project_data(self):
-        """Load or preprocess project data."""
-        try:
-            projects_path = os.path.join(self.data_path, self.file_projects_pipeline)
-            if os.path.exists(projects_path):
-                print('Loading pre-processed project data...')
-                projects = load_file(projects_path)
-            else:
-                print('Reading project data from source file...')
-                projects = DataReader(self.config_manager, self.project_settings).load_data()
-                self.data_saver.save_data(projects, self.file_projects_pipeline)
-            if self.test_mode:
-                print(f"Processing a subset of the data for test mode: {len(projects)} projects reduced to {self.test_number} rows.")
-                projects = projects.head(self.test_number)
-            return projects
-        except Exception as e:
-            print(f"Error in _load_project_data: {e}")
-            raise
+    def _get_projects(self):
+        """Retrieve, load and/or preprocess project data."""
+        if self.projects is None:
+            try:
+                projects_path = os.path.join(self.data_path, self.file_projects_pipeline)
+                if os.path.exists(projects_path):
+                    print('Loading pre-processed project data...')
+                    self.projects = load_file(projects_path)
+                else:
+                    print('Reading project data from source file...')
+                    self.projects = DataReader(self.config_manager, self.project_settings).load_data()
+                    self.data_saver.save_data(self.projects, self.file_projects_pipeline)
+                if self.test_mode:
+                    print(f"Processing a subset of the data for test mode: {len(self.projects)} projects reduced to {self.test_number} rows.")
+                    self.projects = self.projects.head(self.test_number)
+            except Exception as e:
+                print(f"Error in _get_projects: {e}")
+                raise
+        return self.projects  
 
-    def _load_expert_data(self):
-        """Load or preprocess expert data."""
-        try:
-            experts_path = os.path.join(self.data_path, self.file_experts_pipeline)
-            if os.path.exists(experts_path):
-                print('Loading pre-processed expert data...')
-                experts = load_file(experts_path)
-            else:
-                print('Reading expert data from source file...')
-                experts = DataReader(self.config_manager, self.expert_settings).load_data()
-                self.data_saver.save_data(experts, self.file_experts_pipeline)
-            if self.test_mode:
-                print(f"Processing a subset of the data for test mode: {len(experts)} experts reduced to {self.test_number} rows.")
-                experts = experts.head(self.test_number)
-            return experts
-        except Exception as e:
-            print(f"Error in _load_expert_data: {e}")
-            raise
+    def _get_experts(self):
+        """Load or preprocess expert data, ensuring expert profile enrichment is performed if not already done."""
+        if self.experts is None:
+            try:
+                experts_path = os.path.join(self.data_path, self.file_experts_pipeline)
+                if os.path.exists(experts_path):
+                    print('Loading pre-processed expert data...')
+                    self.experts = load_file(experts_path)
+                else:
+                    print('Reading expert data from source file...')
+                    self.experts = DataReader(self.config_manager, self.expert_settings).load_data()
+                # TODO: Extend this to check / add all expert profile relevant information.
+                seniority_column = self.config_manager.get('COLUMN_SENIORITY', 'SENIORITY')
+                if seniority_column not in self.experts.columns:
+                    print('Enriching expert profiles...')
+                    # !!!! This is to be integrated into the ExpertProfiler class. !!!!
+                    self.experts = self.expert_seniority_calculator.enrich_with_seniority(self.experts)
+                    self.data_saver.save_data(self.experts, self.file_experts_pipeline)
+                if self.test_mode:
+                    print(f"Processing a subset of the data for test mode: {len(self.experts)} experts reduced to {self.test_number} rows.")
+                    self.experts = self.experts.head(self.test_number)
+            except Exception as e:
+                print(f"Error in _get_experts: {e}")
+                raise
+        return self.experts
+
+    def _get_publications(self):
+        """Load or preprocess publication data."""
+        if self.publications is None:
+            try:
+                publications_path = os.path.join(self.data_path, self.file_publications_pipeline)
+                if os.path.exists(publications_path):
+                    print('Loading pre-processed publication data...')
+                    self.publications = load_file(publications_path)
+                else:
+                    print('Retrieving publication data from experts...')
+                    experts = self._get_experts()
+                    self.publications = self.publication_handler.get_publications_experts(experts, source='openalex')
+                    self.data_saver.save_data(self.publications, self.file_publications_pipeline)
+                # Truncate abstracts too long before processing.
+                max_abstract_length = self.config_manager.get('PUB_ABSTRACT_MAX_LENGTH', 5000)
+                abstract_col = self.config_manager.get('COLUMN_PUB_ABSTRACT', 'ABSTRACT')
+                self.publications[abstract_col] = self.publications[abstract_col].apply(
+                    lambda abstract: abstract[:max_abstract_length] if len(abstract) > max_abstract_length else abstract
+                )
+                if self.test_mode:
+                    print(f"Processing a subset of the data for test mode: {len(self.publications)} publications reduced to {self.test_number} rows.")
+                    self.publications = self.publications.head(self.test_number)
+            except Exception as e:
+                print(f"Error in _get_publications: {e}")
+                raise
+        return self.publications 
 
     # ======== Module-invoking methods ========
     
-    # Check CitationParser not implemented.
-    def _extract_publication_titles(self):
-        """Extract publication titles from expert data."""
-        try:
-            # Ensure expert data is loaded
-            experts = self._load_expert_data()  
-            print('Extracting publication titles using NER...')
-            publications = self.publication_extractor.extract_publications(experts, config_get_publications)
-            self.data_saver.save_data(publications, self.file_publications_pipeline)
-            return publications
-        except Exception as e:
-            print(f"Error in _extract_publications: {e}")
-            raise
-
-    # def _retrieve_pubmed_data(self):
-    #     """Retrieve data from PubMed."""
-    #     try:
-    #         expert_publication_titles = self._extract_publications()
-    #         print('Retrieving PubMed data...')
-    #         publications = self.pubmed_retriever.fetch_publications(expert_publication_titles)
-    #         self.data_saver.save_data(publications, self.file_publications_pipeline)
-    #         return publications
-    #     except Exception as e:
-    #         print(f"Error in _retrieve_pubmed_data: {e}")
-    #         raise
-
     def _classify_projects(self):
         """Classify projects with research areas and approaches."""
         try:
             separator = self.config_manager.get('SEPARATOR_VALUES_OUTPUT', '|')
-            projects = self._load_project_data()
-            experts = self._load_expert_data()
+            projects = self._get_projects()
+            experts = self._get_experts()
             print('Classifying projects with research areas...')
             column_name = self.config_manager.get('COLUMN_RESEARCH_AREAS')
             topics = extract_values_column(experts, column_name, separator)
             prompt_file = self.config_manager.get('FILE_PROMPT_TOPICS')
             projects = self.research_labeler.label_topics(projects, topics, prompt_file, column_name)
+            self.data_saver.save_data(projects, self.file_projects_pipeline)
             print('Classifying projects with research approaches...')
             column_name = self.config_manager.get('COLUMN_RESEARCH_APPROACHES')
             topics = extract_values_column(experts, column_name, separator)
             prompt_file = self.config_manager.get('FILE_PROMPT_APPROACHES')
             projects = self.research_labeler.label_topics(projects, topics, prompt_file, column_name)
             self.data_saver.save_data(projects, self.file_projects_pipeline)
-            return projects
+            # Updating projects in pipeline.
+            self.projects = projects
         except Exception as e:
             print(f"Error in _classify_projects: {e}")
             raise
@@ -212,57 +245,49 @@ class DataProcessingPipeline:
     def _summarize_projects(self):
         """Summarize content (research topic, objectives, methods) from projects."""
         try:
-            # Load project data
-            projects = self._load_project_data()
-            # Summarize content for the projects
+            # Load project data.
+            projects = self._get_projects()
+            # Summarize content for the projects.
             print("Starting projects summarization...")
-            enriched_projects = self.content_summarizer.summarize_content(projects)
-            # Save the enriched project data
-            self.data_saver.save_data(enriched_projects, self.file_projects_pipeline)
-            return enriched_projects
+            projects = self.content_summarizer.summarize_content(projects)
+            # Save the enriched project data.
+            self.data_saver.save_data(projects, self.file_projects_pipeline)
+            # Updating projects in pipeline.
+            self.projects = projects
         except Exception as e:
             print(f"Error in _summarize_projects: {e}")
             raise
       
-    ### FUNCTIONS BELOW TO CHECK / TEST !!! ###
-
-    def _enrich_publications(self):
-        """Enrich publication data."""
+    def _summarize_publications(self):
+        """Summarize content (research topic, objectives, methods) from publications."""
         try:
-            publications_path = os.path.join(self.data_path, self.file_publications_pipeline)
-            if os.path.exists(publications_path):
-                print('Loading pre-processed publication data...')
-                publications = load_file(publications_path)
-            else:
-                publications = self._retrieve_pubmed_data()
-            if self.test_mode:
-                print(f"Processing a subset of the data for test mode: {len(publications)} publications reduced to {self.test_number} rows.")
-                publications = publications.head(self.test_number)
-            print('Enriching publications...')
-            publications = self.content_extractor.extract_content(publications)
+            # Load publications data
+            publications = self._get_publications()
+            # Summarize content for the publications
+            print("Starting publications summarization...")
+            publications = self.content_summarizer.summarize_content(publications)
+            # Save the enriched publications data
             self.data_saver.save_data(publications, self.file_publications_pipeline)
-            return publications
+            # Updating publications in pipeline.
+            self.publications = publications
         except Exception as e:
-            print(f"Error in _enrich_publications: {e}")
+            print(f"Error in _summarize_publications: {e}")
             raise
 
-    # MeSH tagging for projects and publications - Labels items with MeSH terms, aggregates them.
-    # Involves two steps: 
-    # - Tagging MeSH terms by means of the MeSH-tagging model.
-    # - Obtaining MeSH term categories and aggregating them.
-    # NOTE:
-    # In the case of publications we should consider the possibility to tag them or use the MeSH terms retrieved from PubMed
-    # and tag only the publications that do not contain MeSH terms.
-
+    # MeSH tagging for projects and publications.
+    # TODO: Use MeSH terms categories to aggregate MeSH terms - different categories would be used to generate different features.
+    # TODO: In the case of publications we should consider using the MeSH terms retrieved from PubMed/OpenAlex when available.
+    #       Now obtaining MeSH terms for publications by means of the same model used for projects for consistency sake.
     def _mesh_tag_projects(self): # done
         """Tag projects with MeSH terms."""
         try:
-            projects = self._load_project_data()
+            projects = self._get_projects()
             print('Tagging projects with MeSH terms...')
             input_columns = self.config_manager.get('MESH_INPUT_COLUMNS_PROJECTS')
             projects = self.mesh_labeler.label_with_mesh(projects, input_columns)
             self.data_saver.save_data(projects, self.file_projects_pipeline)
-            return projects
+            # Updating projects in pipeline.
+            self.projects = projects
         except Exception as e:
             print(f"Error in _mesh_tag_projects: {e}")
             raise
@@ -270,38 +295,48 @@ class DataProcessingPipeline:
     def _mesh_tag_publications(self): # done
         """Tag publications with MeSH terms."""
         try:
-            publications = self._enrich_publications()
+            publications = self._get_publications()
             print('Tagging publications with MeSH terms...')
             input_columns = self.config_manager.get('MESH_INPUT_COLUMNS_PUBLICATIONS')
             publications = self.mesh_labeler.label_with_mesh(publications, input_columns)
             self.data_saver.save_data(publications, self.file_publications_pipeline)
-            return publications
+            # Updating publications in pipeline.
+            self.publications = publications
         except Exception as e:
             print(f"Error in _mesh_tag_publications: {e}")
             raise
 
-    def _compute_similarity(self):
+    def _compute_similarity_scores(self):
         """Compute similarity scores for experts and projects."""
         try:
-            print('Computing similarity scores...')
-            projects = self._load_project_data()
-            experts = self._load_expert_data()
-            publications = self._enrich_publications()
-            label_similarity_scores = self.label_similarity_calculator.compute_similarity(self.config_manager, experts, projects)
-            mesh_similarity_scores = self.mesh_similarity_calculator.compute_expert_project_similarity(publications, projects)
-            content_similarity_scores = self.content_similarity_calculator.compute_similarity(publications, projects)
-            return label_similarity_scores, mesh_similarity_scores, content_similarity_scores
+            projects = self._get_projects()
+            experts = self._get_experts()
+            publications = self._get_publications()
+            # Compute and save scores.
+            scores_output_dir = self.config_manager.get('SCORES_PATH')
+            print('Computing expert-project research type similarity scores...')
+            self.research_type_similarity_scores = self.research_type_similarity_calculator.compute_similarity(experts, projects)
+            self.data_saver.save_data(self.research_type_similarity_scores, self.file_research_type_similarity_scores, output_dir=scores_output_dir)
+            print('Computing expert-project research topics/approaches similarity scores...')
+            self.label_similarity_scores = self.label_similarity_calculator.compute_similarity(experts, projects)
+            self.data_saver.save_data(self.label_similarity_scores, self.file_label_similarity_scores, output_dir=scores_output_dir)
+            print('Computing publication-project MeSH similarity scores...')
+            self.mesh_similarity_scores = self.mesh_similarity_calculator.compute_similarity(publications, projects)
+            self.data_saver.save_data(self.mesh_similarity_scores, self.file_mesh_similarity_scores, output_dir=scores_output_dir)
+            print('Computing publication-project content similarity scores...')
+            self.content_similarity_scores = self.content_similarity_calculator.compute_similarity(publications, projects)
+            self.data_saver.save_data(self.content_similarity_scores, self.file_content_similarity_scores, output_dir=scores_output_dir)
         except Exception as e:
-            print(f"Error in _compute_similarity: {e}")
+            print(f"Error in _compute_similarity_scores: {e}")
             raise
 
     def _rank_experts(self):
         """Rank experts based on similarity scores."""
         try:
             print('Ranking experts with respect to projects...')
-            label_similarity_scores, mesh_similarity_scores, content_similarity_scores = self._compute_similarity()
-            experts = self._load_expert_data()
-            projects = self._load_project_data()
+            label_similarity_scores, mesh_similarity_scores, content_similarity_scores = self._compute_similarity_scores()
+            experts = self._get_experts()
+            projects = self._get_projects()
             expert_project_rankings = self.expert_ranker.rank_experts(
                 experts,
                 projects,
@@ -326,45 +361,4 @@ class DataProcessingPipeline:
             print(f"Error in _assign_experts: {e}")
             raise
 
-    def _determine_seniority(self): # done
-        """Determine seniority levels for experts."""
-        try:
-            print('Determining seniority levels for experts...')
-            experts = self._load_expert_data()
-            experts = self.expert_profiler.preprocess_data(experts)
-            pub_threshold, cits_threshold = self.expert_profiler.calculate_thresholds(experts)
-            experts['SENIORITY'] = experts.apply(lambda row: self.expert_profiler.determine_seniority(row, pub_threshold, cits_threshold), axis=1)
-            self.data_saver.save_data(experts, self.file_experts_pipeline)
-            return experts
-        except Exception as e:
-            print(f"Error in _determine_seniority: {e}")
-            raise
 
-    def _calculate_research_type_similarity(self): # to be changed based on modifications to FeatureGenerator
-        """Calculate similarity between experts and projects based on research types."""
-        try:
-            print("Calculating research type similarity between experts and projects...")
-            projects = self._load_project_data()
-            experts = self._load_expert_data()
-            df_content_similarity_scores, df_mesh_scores, df_jaccard_similarity_scores = self.feature_generator.load_data()
-            df_projects, df_experts, df_content_similarity_scores, df_mesh_scores, df_jaccard_similarity_scores = self.feature_generator.preprocess_data(
-                df_projects=projects, 
-                df_experts=experts, 
-                df_content_similarity_scores=df_content_similarity_scores,
-                df_mesh_scores=df_mesh_scores,
-                df_jaccard_similarity_scores=df_jaccard_similarity_scores
-            )
-            df_combined = self.feature_generator.combine_data(
-                df_projects=df_projects,
-                df_experts=df_experts,
-                df_content_similarity_scores=df_content_similarity_scores,
-                df_mesh_scores=df_mesh_scores,
-                df_jaccard_similarity_scores=df_jaccard_similarity_scores
-            )
-            df_combined = self.research_type_similarity_calculator.calculate_similarity_scores(df_combined)
-            df_combined = self.feature_generator.reorder_columns(df_combined)
-            self.feature_generator.save_combined_data(df_combined)
-            return df_combined
-        except Exception as e:
-            print(f"Error in _calculate_research_type_similarity: {e}")
-            raise

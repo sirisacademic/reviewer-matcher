@@ -1,3 +1,6 @@
+# File: content_summarizer.py
+
+import sys
 import pandas as pd
 from tqdm import tqdm
 from abbreviations import schwartz_hearst
@@ -54,7 +57,7 @@ class ContentSummarizer(LLMHandler):
         
     def summarize_content(self, df):
         """Extract content and expand abbreviations for projects in the dataframe."""
-        tqdm.pandas()
+        tqdm.pandas(desc='Obtaining summarized content', file=sys.stdout)
         # Get abbreviations using Schwartz-Hearst method
         df[self.abbreviation_cols['abbreviations']] = df.apply(
             lambda row: schwartz_hearst.extract_abbreviation_definition_pairs(

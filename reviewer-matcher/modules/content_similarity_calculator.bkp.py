@@ -1,6 +1,5 @@
 # File: content_similarity_calculator.py
 
-import torch
 import pandas as pd
 from sentence_transformers import SentenceTransformer, util
 from utils.functions_similarity import (
@@ -35,8 +34,11 @@ class ContentSimilarityCalculator:
     def compute_similarity(self, publications, projects):
         """Compute similarity scores between publication content and project content."""
         # Ensure clusters are computed.
-        if self.method_to_cluster is None or self.cluster_counts is None:
-            self._compute_clusters(publications, projects)
+        if (
+            self.method_to_cluster is None or self.cluster_counts is None or
+            self.method_specific_to_cluster is None or self.method_specific_cluster_counts is None
+        ):
+            self._compute_clusters(publications)
         # Process publication-project pairs.
         df_publication_scores = process_publication_project_pairs(publications, projects, self._process_pub_project_pair)
         # Aggregate scores.
@@ -55,27 +57,21 @@ class ContentSimilarityCalculator:
         expert_project_scores = aggregate_expert_scores(df_publication_scores, agg_funcs, expert_id_col='Expert_ID', project_id_col='Project_ID')
         return expert_project_scores
 
-    def _compute_clusters(self, publications, projects):
-        """Compute clusters for METHODS from publication and project content."""
-        print('Generating METHODS term clusters.')
+    def _compute_clusters(self, publications):
+        """Compute clusters for METHODS from publication content."""
+        # Methods clusters.
         all_methods = [
             method.strip()
-            for methods in pd.concat([publications[self.methods_column], projects[self.methods_column]])
+            for methods in publications[self.methods_column]
             for method in convert_to_list(methods, self.separator_output)
         ]
-        all_methods = list(set(all_methods))  # Deduplicate terms
-        print(f'Number of unique METHODS terms: {len(all_methods)}')
-        # Perform clustering with precomputed embeddings.
         self.method_to_cluster, self.cluster_counts, _ = cluster_items(
-            model=self.model,
-            all_items=all_methods,
-            distance_threshold=self.distance_threshold_clusters
+            self.model, all_methods, self.distance_threshold_clusters
         )
-
+        
     def _process_pub_project_pair(self, pub_row, project_row):
         """Process a single publication-project pair to compute similarity scores."""
         # Topic similarity.
-        print('Computing research topic similarity.')
         if pub_row[self.research_topic_column] and project_row[self.research_topic_column]:
             topic_similarity = util.pytorch_cos_sim(
                 self.model.encode(pub_row[self.research_topic_column], convert_to_tensor=True, show_progress_bar=False),
@@ -84,21 +80,18 @@ class ContentSimilarityCalculator:
         else:
             topic_similarity = 0
         # Objectives similarity.
-        print('Computing objectives similarity.')
         objectives_avg_sim, objectives_max_sim = compute_list_similarity(
             self.model,
             convert_to_list(pub_row[self.objectives_column], self.separator_output),
             convert_to_list(project_row[self.objectives_column], self.separator_output)
         )
         # Methods specific similarity - not weighted.
-        print('Computing specific methods similarity.')
         methods_specific_avg_sim, methods_specific_max_sim = compute_list_similarity(
             self.model,
             convert_to_list(pub_row[self.methods_specific_column], self.separator_output),
             convert_to_list(project_row[self.methods_specific_column], self.separator_output)
         )
         # All methods similarity.
-        print('Computing all methods similarity.')
         pub_methods = convert_to_list(pub_row[self.methods_column], self.separator_output)
         proj_methods = convert_to_list(project_row[self.methods_column], self.separator_output)
         methods_avg_sim, methods_max_sim = compute_list_similarity(self.model, pub_methods, proj_methods)
@@ -121,4 +114,7 @@ class ContentSimilarityCalculator:
             'Methods_Avg_Similarity_Weighted': methods_avg_sim_weighted,
             'Methods_Max_Similarity_Weighted': methods_max_sim_weighted
         }
+
+
+
 
