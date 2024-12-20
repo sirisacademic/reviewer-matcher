@@ -176,3 +176,12 @@ local_data/
 
 output
 output/
+train_eval
+train_eval/
+bkp
+bkp/
+BKP
+BKP/
+*bkp*
+
+

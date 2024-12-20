@@ -1,12 +1,12 @@
+# File: label_similarity_calculator.py
+
 import pandas as pd
 from tqdm import tqdm
-from sklearn.feature_extraction.text import TfidfVectorizer
 from utils.functions_similarity import (
     convert_to_list,
     calculate_jaccard_similarity,
     calculate_dice_similarity,
     one_hot_encode,
-    calculate_weighted_jaccard_similarity,
     calculate_overlap_coefficient
 )
 
@@ -18,9 +18,9 @@ class LabelSimilarityCalculator:
         self.col_id_expert = config_manager.get('ID_COLUMN_NAME', 'ID')
         self.research_areas_column = config_manager.get('RESEARCH_AREAS_COLUMN', 'RESEARCH_AREAS')
         self.research_approaches_column = config_manager.get('RESEARCH_APPROACHES_COLUMN', 'RESEARCH_APPROACHES')
-        self.tfidf_vectorizer = TfidfVectorizer(tokenizer=lambda x: x.split(self.separator_output))
 
     def compute_similarity(self, experts_data, projects_data):
+    
         """Compute various similarity scores between experts and projects."""
         # Prepare unique terms.
         all_research_areas = self._prepare_unique_terms(experts_data, projects_data, self.research_areas_column)
@@ -34,11 +34,6 @@ class LabelSimilarityCalculator:
             'areas': one_hot_encode(projects_data, self.research_areas_column, all_research_areas, self.separator_output),
             'approaches': one_hot_encode(projects_data, self.research_approaches_column, all_research_approaches, self.separator_output),
         }
-        # Compute TF-IDF matrices.
-        tfidf_experts_areas = self._compute_tfidf(experts_data, self.research_areas_column)
-        tfidf_projects_areas = self._compute_tfidf(projects_data, self.research_areas_column)
-        tfidf_experts_approaches = self._compute_tfidf(experts_data, self.research_approaches_column)
-        tfidf_projects_approaches = self._compute_tfidf(projects_data, self.research_approaches_column)
         # Calculate similarity.
         similarity_scores = []
         total_iterations = len(experts_data) * len(projects_data)
@@ -68,13 +63,6 @@ class LabelSimilarityCalculator:
                         experts_encoded['approaches'][expert_index],
                         projects_encoded['approaches'][project_index]
                     )
-                    # TF-IDF weighted Jaccard.
-                    area_weighted_jaccard = calculate_weighted_jaccard_similarity(
-                        tfidf_experts_areas, expert_index, project_index
-                    )
-                    approach_weighted_jaccard = calculate_weighted_jaccard_similarity(
-                        tfidf_experts_approaches, expert_index, project_index
-                    )
                     # Overlap coefficient.
                     area_overlap = calculate_overlap_coefficient(expert_areas, project_areas)
                     approach_overlap = calculate_overlap_coefficient(expert_approaches, project_approaches)
@@ -85,11 +73,9 @@ class LabelSimilarityCalculator:
                         'Project_ID': project_row[self.col_id_project],
                         'Research_Areas_Jaccard_Similarity': area_jaccard,
                         'Research_Areas_Dice_Similarity': area_dice,
-                        'Research_Areas_Weighted_Jaccard_Similarity': area_weighted_jaccard,
                         'Research_Areas_Overlap_Coefficient': area_overlap,
                         'Research_Approaches_Jaccard_Similarity': approach_jaccard,
                         'Research_Approaches_Dice_Similarity': approach_dice,
-                        'Research_Approaches_Weighted_Jaccard_Similarity': approach_weighted_jaccard,
                         'Research_Approaches_Overlap_Coefficient': approach_overlap,
                     })
         # Convert results to DataFrame
@@ -105,12 +91,4 @@ class LabelSimilarityCalculator:
             for term in terms
         )
         return list(unique_terms)
-
-    def _compute_tfidf(self, data, column):
-        """Compute the TF-IDF matrix for a given column in the dataset."""
-        # Preprocess the column to join lists into strings with space-separated terms.
-        preprocessed_column = data[column].apply(
-            lambda x: ' '.join([f'"{term}"' for term in convert_to_list(x, self.separator_output)])
-        ).fillna('')  # Convert lists into space-separated strings and handle NaN
-        return self.tfidf_vectorizer.fit_transform(preprocessed_column)
 

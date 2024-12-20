@@ -32,6 +32,10 @@ class MeSHSimilarityCalculator:
 
     def compute_similarity(self, publications, projects):
         """Compute MeSH similarity scores between expert publications and project proposals."""
+        #### !!!!!!!!!!!!!!!!!!!! TEST !!!!!!!!!!!!!!!!
+        #projects = projects[projects[self.col_id_project]==228]
+        #publications = publications[publications[self.col_id_pub_expert]<=50]
+        ####################################################################
         # Ensure clusters are computed
         if self.mesh_to_cluster is None or self.cluster_counts is None:
             self._compute_clusters(publications, projects)
@@ -71,7 +75,6 @@ class MeSHSimilarityCalculator:
         return expert_project_scores
        
     def _compute_clusters(self, publications, projects):
-        """Compute clusters for all unique MeSH terms from publications and projects."""
         print('Generating MeSH term clusters.')
         all_mesh_terms = [
             term.strip()
@@ -80,44 +83,49 @@ class MeSHSimilarityCalculator:
         ]
         all_mesh_terms = list(set(all_mesh_terms))  # Deduplicate terms
         print(f'Number of unique MeSH terms: {len(all_mesh_terms)}')
-        # Perform clustering with precomputed embeddings.
         self.mesh_to_cluster, self.cluster_counts, _ = cluster_items(
             model=self.model,
             all_items=all_mesh_terms,
             distance_threshold=self.distance_threshold_clusters
         )
+        #print(f"Clusters: {self.mesh_to_cluster}")  # Debug print
+        #print(f"Cluster counts: {self.cluster_counts}")  # Debug print
+
 
     def _calculate_semantic_coverage_score(self, expert_embeddings, proposal_embeddings):
-        """Calculate the semantic coverage score between precomputed expert and proposal embeddings."""
-        print('Calculating expert-project semantic coverage.')
+        #print('Calculating expert-project semantic coverage.')
         if expert_embeddings is None or proposal_embeddings is None:
             return 0
         cosine_scores = util.pytorch_cos_sim(expert_embeddings, proposal_embeddings).cpu().numpy()
+        #print(f"Cosine similarity scores: {cosine_scores}")  # Debug print
         covered_terms_count = sum(
             any(cosine_scores[i, j] >= self.similarity_threshold_terms for i in range(cosine_scores.shape[0]))
             for j in range(cosine_scores.shape[1])
         )
+        #print(f"Similarity threshold: {self.similarity_threshold_terms}")  # Debug print
         return covered_terms_count / cosine_scores.shape[1] if cosine_scores.shape[1] > 0 else 0
 
+
     def _precompute_embeddings(self, terms_dict):
-        """Precompute embeddings for a dictionary of terms."""
         print('Precomputing embeddings.')
         embeddings_dict = {}
         for id_, terms_list in terms_dict.items():
             if terms_list:
                 embeddings = self.model.encode(terms_list, convert_to_tensor=True, show_progress_bar=False)
                 embeddings_dict[id_] = (terms_list, embeddings)
+                #print(f"Embeddings for {id_}: {embeddings}")  # Debug print
             else:
                 embeddings_dict[id_] = ([], None)
         return embeddings_dict
 
+
     def _process_pub_project_pair(self, pub_row, project_row):
-        """Process a single publication-project pair to compute similarity scores."""
         pub_mesh_terms = convert_to_list(pub_row[self.mesh_combined_output_column], self.separator_output)
         proj_mesh_terms = convert_to_list(project_row[self.mesh_combined_output_column], self.separator_output)
+        #print(f"Publication MeSH terms: {pub_mesh_terms}")  # Debug print
+        #print(f"Project MeSH terms: {proj_mesh_terms}")  # Debug print
         avg_sim, max_sim = compute_list_similarity(self.model, pub_mesh_terms, proj_mesh_terms)
         specificity_weight = compute_specificity_weight(pub_mesh_terms, self.mesh_to_cluster, self.cluster_counts)
-        # TODO: Get output column names for experts/projects from configuration files!!!
         return {
             'Pub_ID': pub_row[self.col_id_pub_publication],
             'Expert_ID': pub_row[self.col_id_pub_expert],
@@ -130,7 +138,8 @@ class MeSHSimilarityCalculator:
 
     def _add_mesh_semantic_coverage_scores(self, expert_project_scores, expert_embeddings_dict, project_embeddings_dict):
         """Compute mesh_semantic_coverage_score for each expert-project pair using precomputed embeddings."""
-        # TODO: Get output column names for experts/projects from configuration files!!!
+        # Collect scores in a list
+        coverage_scores = []
         for idx, row in expert_project_scores.iterrows():
             expert_id = row['Expert_ID']
             project_id = row['Project_ID']
@@ -139,8 +148,13 @@ class MeSHSimilarityCalculator:
             _, project_embeddings = project_embeddings_dict.get(project_id, (None, None))
             # Calculate semantic coverage score
             mesh_semantic_coverage_score = self._calculate_semantic_coverage_score(expert_embeddings, project_embeddings)
-            # Update the DataFrame
-            expert_project_scores.at[idx, 'Expert_MeSH_Semantic_Coverage_Score'] = mesh_semantic_coverage_score
+            # Append the score to the list
+            coverage_scores.append(mesh_semantic_coverage_score)
+        # Update the DataFrame in bulk
+        expert_project_scores['Expert_MeSH_Semantic_Coverage_Score'] = coverage_scores
         return expert_project_scores
+
+        
+        
 
 

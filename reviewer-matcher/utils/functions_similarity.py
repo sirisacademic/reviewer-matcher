@@ -11,7 +11,6 @@ from sentence_transformers import util
 from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import jaccard_score
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 def one_hot_encode(data, column, unique_terms, separator='|'):
     """
@@ -20,11 +19,13 @@ def one_hot_encode(data, column, unique_terms, separator='|'):
     mlb = MultiLabelBinarizer(classes=unique_terms)
     encoded_data = mlb.fit_transform(data[column].apply(lambda x: convert_to_list(x, separator)))
     return encoded_data
-
+  
 def calculate_jaccard_similarity(encoded1, encoded2):
     """
     Calculate the Jaccard similarity score between two encoded vectors.
     """
+    if encoded1.sum() == 0 and encoded2.sum() == 0:
+        return 0
     return jaccard_score(encoded1, encoded2, average='binary')
 
 def calculate_dice_similarity(encoded1, encoded2):
@@ -32,7 +33,10 @@ def calculate_dice_similarity(encoded1, encoded2):
     Calculate the Dice similarity score between two encoded vectors.
     """
     intersection = (encoded1 & encoded2).sum()
-    return (2 * intersection) / (encoded1.sum() + encoded2.sum())
+    total_sum = encoded1.sum() + encoded2.sum()
+    if total_sum == 0:
+        return 0
+    return (2 * intersection) / total_sum
 
 def calculate_overlap_coefficient(set1, set2):
     """
@@ -41,24 +45,6 @@ def calculate_overlap_coefficient(set1, set2):
     intersection = len(set1 & set2)
     smaller_set_size = min(len(set1), len(set2))
     return intersection / smaller_set_size if smaller_set_size > 0 else 0
-
-def calculate_weighted_jaccard_similarity(tfidf_matrix, idx1, idx2):
-    """
-    Calculate the TF-IDF Weighted Jaccard similarity score between two sets.
-    """
-    # Validate inputs
-    if idx1 >= tfidf_matrix.shape[0] or idx2 >= tfidf_matrix.shape[0]:
-        raise ValueError("Index out of range for TF-IDF matrix rows.")
-    if tfidf_matrix.shape[0] == 0 or tfidf_matrix.shape[1] == 0:
-        raise ValueError("TF-IDF matrix is empty.")
-    # Retrieve vectors
-    tfidf_vec1 = tfidf_matrix[idx1].toarray().flatten()
-    tfidf_vec2 = tfidf_matrix[idx2].toarray().flatten()
-    # Compute intersection and union weights
-    intersection_weight = (tfidf_vec1 * tfidf_vec2).sum()
-    union_weight = tfidf_vec1.sum() + tfidf_vec2.sum() - intersection_weight
-    # Return similarity score
-    return intersection_weight / union_weight if union_weight > 0 else 0
 
 def compute_list_similarity(model, list1, list2, batch_size=100):
     """Compute semantic similarity between two lists of phrases using batching to manage memory. Returns average and maximum similarity scores."""
@@ -146,6 +132,8 @@ def aggregate_expert_scores(publication_scores, agg_funcs, expert_id_col='Expert
     grouped = publication_scores.groupby([project_id_col])
     with tqdm(total=len(grouped), desc="Aggregating expert-project scores", file=sys.stdout) as project_pbar:
         for project_id, project_group in grouped:
+            if isinstance(project_id, tuple):
+                project_id = project_id[0]
             for expert_id, group in project_group.groupby(expert_id_col):
                 group_filled = group.fillna(0)
                 score_dict = {expert_id_col: expert_id, project_id_col: project_id}
