@@ -195,32 +195,6 @@ def get_local_model_response(pipe, generation_args, prompt, max_retries=3, retry
   print('Failed to get a response from the model after multiple attempts.')
   return None
 
-"""
-def make_external_request_with_retry(external_model_url, headers, filtered_args, max_retries=5, retry_delay=2, initial_timeout=30):
-#----------------------------------------------------------
-  retry_strategy = Retrying(
-    stop=stop_after_attempt(max_retries),
-    wait=wait_exponential(multiplier=retry_delay, min=retry_delay, max=retry_delay * 4),
-    retry=retry_if_exception_type(RequestException)
-  )
-  for attempt in retry_strategy:
-    # Calculate the current timeout value with exponential backoff for each retry
-    current_timeout = initial_timeout * (2 ** attempt.retry_state.attempt_number)
-    try:
-      # Make the request
-      response = requests.post(external_model_url, headers=headers, json=filtered_args, timeout=current_timeout)
-      # Raise exception if the response has an HTTP error status code
-      response.raise_for_status()
-      # If the request is successful, return the response
-      return response
-    except RequestException as e:
-      # Print retry attempt only if there is an error
-      print(f"Attempt {attempt.retry_state.attempt_number+1}/{max_retries}: Failed with error: {e}. Retrying with timeout {current_timeout} seconds...", file=sys.stderr)
-  # If the function exits the loop without a successful response
-  print("Failed to get a response from the external model after multiple attempts.")
-  return None
-"""
-
 def make_external_request_with_retry(external_model_url, headers, filtered_args, max_retries=5, retry_delay=2, initial_timeout=30):
     def before_sleep_print(retry_state):
         print(f"Retrying in {retry_state.next_action.sleep} seconds...", file=sys.stderr)
@@ -238,8 +212,13 @@ def make_external_request_with_retry(external_model_url, headers, filtered_args,
         try:
             # Make the request
             response = requests.post(external_model_url, headers=headers, json=filtered_args, timeout=current_timeout)
-            # If the request is successful, return the response
-            return response
+            response.raise_for_status()  # Raise an HTTPError for bad responses
+            result = response.json()
+            # Check if 'choices' is in the response
+            if 'choices' in result and isinstance(result['choices'], list):
+                return response
+            else:
+                raise ValueError("Unexpected response format: missing 'choices'.")
         except RequestException as e:
             # Print retry attempt only if there is an error
             print(f"Attempt {attempt.retry_state.attempt_number+1}/{max_retries}: Failed with error: {e}. Retrying with timeout {current_timeout} seconds...", file=sys.stderr)

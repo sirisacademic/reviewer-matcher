@@ -1,119 +1,94 @@
+# File: feature_generator.py
+
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 class FeatureGenerator:
     def __init__(self, config_manager):
-        """
-        Initialize the FeatureGenerator.
-        """
-        # set file paths for input and output data
-        self.file_path_content_similarity = config_manager.get('FILE_PATH_EXPERT_PROJECT_CONTENT_SIMILARITY_SCORES')
-        self.file_path_mesh_scores = config_manager.get('FILE_PATH_EXPERT_PROJECT_MESH_SCORES')
-        self.file_path_jaccard_scores = config_manager.get('FILE_PATH_EXPERT_PROJECT_JACCARD_SIMILARITY')
-        self.file_path_combined_scores = config_manager.get('FILE_PATH_COMBINED_SCORES')
+        """Initialize the FeatureGenerator with feature groups and PCA options."""
+        self.pca_variance_threshold = config_manager.get('PCA_VARIANCE_THRESHOLD', 0.9)
+        # TODO: Unify handling of input output columns !!!!
+        # Input columns pre-computed scores.
+        self.feature_groups = config_manager.get('FEATURE_GROUPS')
+        self.expert_id_col = config_manager.get('EXPERT_ID_COLUMN', 'Expert_ID')
+        self.project_id_col = config_manager.get('PROJECT_ID_COLUMN', 'Project_ID')
+        # Input columns experts data.
+        self.expert_id_experts_col = config_manager.get('COLUMN_EXPERT_ID', 'ID')
+        self.seniority_publications_column = config_manager.get('COLUMN_SENIORITY_PUBLICATIONS', 'SENIORITY_PUBLICATIONS')
+        self.seniority_reviewer_column = config_manager.get('COLUMN_SENIORITY_REVIEWER', 'SENIORITY_REVIEWER')
+        # Output columns experts data.
+        self.output_column_expert_seniority_publications = config_manager.get('OUTPUT_COLUMN_EXPERT_SENIORITY_PUBLICATIONS', 'Expert_Seniority_Publications')
+        self.output_column_expert_seniority_reviewer = config_manager.get('OUTPUT_COLUMN_EXPERT_SENIORITY_REVIEWER', 'Expert_Seniority_Reviewer')
+        self.scaler = StandardScaler()
 
-        # define column mappings and normalization settings
-        self.columns_projects = config_manager.get('COLUMNS_PROJECTS')
-        self.columns_experts = config_manager.get('COLUMNS_EXPERTS')
-        self.columns_to_normalize = config_manager.get('COLUMNS_TO_NORMALIZE')
+    def _unify_id_types(self, score_dataframes):
+        """Unify the data types of the ID columns across DataFrames."""
+        for df in score_dataframes:
+            for col in [self.expert_id_col, self.project_id_col]:
+                if col in df.columns:
+                    df[col] = df[col].astype(int)
 
-    def load_data(self):
-        """
-        Load data from specified file paths and return as dataframes.
-        """
-        # load content similarity, MeSH scores, and Jaccard similarity data from files
-        df_content_similarity_scores = pd.read_pickle(self.file_path_content_similarity)
-        df_mesh_scores = pd.read_pickle(self.file_path_mesh_scores)
-        df_jaccard_similarity_scores = pd.read_pickle(self.file_path_jaccard_scores)
-        return df_content_similarity_scores, df_mesh_scores, df_jaccard_similarity_scores
-
-    def preprocess_data(self, df_projects, df_experts, df_content_similarity_scores, df_mesh_scores, df_jaccard_similarity_scores):
-        """
-        Preprocess and ensure uniformity across dataframes.
-        """
-        # rename project and expert columns based on the defined mappings
-        df_projects = df_projects[list(self.columns_projects.keys())].rename(columns=self.columns_projects)
-        df_experts = df_experts[list(self.columns_experts.keys())].rename(columns=self.columns_experts)
-
-        # ensure consistent data types and formatting for ids and names in projects and experts
-        df_projects['Project_ID'] = df_projects['Project_ID'].astype(str)
-        df_experts['Expert_ID'] = df_experts['Expert_ID'].astype(str)
-        df_experts['Expert_Full_Name'] = df_experts['Expert_Full_Name'].str.strip()
-
-        # ensure consistent data types for project and expert ids in similarity score dataframes
-        for df in [df_content_similarity_scores, df_mesh_scores, df_jaccard_similarity_scores]:
-            df['Project_ID'] = df['Project_ID'].astype(str)
-            df['Expert_ID'] = df['Expert_ID'].astype(str)
-
-        return df_projects, df_experts, df_content_similarity_scores, df_mesh_scores, df_jaccard_similarity_scores
-
-    def combine_data(self, df_projects, df_experts, df_content_similarity_scores, df_mesh_scores, df_jaccard_similarity_scores):
-        """
-        Combine all similarity scores and add metadata, return combined dataframe.
-        """
-        # merge Jaccard similarity scores with MeSH scores
-        df_combined = pd.merge(
-            df_jaccard_similarity_scores, df_mesh_scores, on=['Expert_ID', 'Project_ID'], how='inner'
+    def generate_features(self, experts, score_dataframes):
+        """Generate features by normalizing, applying PCA, and creating aggregated ranks."""
+        # Unify ID types across DataFrames
+        self._unify_id_types(score_dataframes)
+        # Merge all DataFrames on unified Expert_ID and Project_ID
+        features = score_dataframes[0]
+        for df in score_dataframes[1:]:
+            features = pd.merge(features, df, on=[self.expert_id_col, self.project_id_col], how='inner')
+        # Add experts' seniority features.
+        # First make sure there are no missing values.
+        experts_seniority_columns = [self.seniority_publications_column, self.seniority_reviewer_column]
+        experts[experts_seniority_columns] = experts[experts_seniority_columns].apply(pd.to_numeric, errors='coerce')
+        experts[experts_seniority_columns] = experts[experts_seniority_columns].fillna(experts[experts_seniority_columns].mean())
+        features = features.merge(
+            experts[[self.expert_id_experts_col, self.seniority_publications_column, self.seniority_reviewer_column]],
+            how='left',
+            left_on=self.expert_id_col,
+            right_on=self.expert_id_experts_col
+        ).drop(columns=[self.expert_id_experts_col])  # Drop 'ID' immediately after the merge
+        # Rename the columns in the "features" dataframe
+        features.rename(
+            columns={
+                self.seniority_publications_column: self.output_column_expert_seniority_publications,
+                self.seniority_reviewer_column: self.output_column_expert_seniority_reviewer
+            },
+            inplace=True
         )
-        # merge the result with content similarity scores
-        df_combined = pd.merge(
-            df_combined, df_content_similarity_scores, on=['Expert_ID', 'Project_ID'], how='inner'
+        # Get total of unique experts to normalize rankings.
+        total_experts = features[self.expert_id_col].nunique()
+        # Normalize numeric columns except Expert_ID and Project_ID
+        numeric_columns = features.select_dtypes(include='number').columns.difference([self.expert_id_col, self.project_id_col])
+        # Fill missing values with the mean of the column
+        features[numeric_columns] = features[numeric_columns].fillna(features[numeric_columns].mean())
+        # Normalize numeric columns except Expert_ID and Project_ID
+        features[numeric_columns] = self.scaler.fit_transform(features[numeric_columns])
+        # Apply PCA to feature groups
+        for group_name, group_features in self.feature_groups.items():
+            if any(feature in features.columns for feature in group_features):
+                # Extract the feature group subset
+                valid_features = [f for f in group_features if f in features.columns]
+                # Perform PCA
+                pca = PCA(n_components=self.pca_variance_threshold)
+                X_pca = pca.fit_transform(features[valid_features])
+                # Add PCA components to the main dataframe
+                pca_columns = [f'{group_name}_PCA_{i+1}' for i in range(X_pca.shape[1])]
+                pca_df = pd.DataFrame(X_pca, columns=pca_columns, index=features.index)
+                features = pd.concat([features, pca_df], axis=1)
+        # Compute average and ranks of PCA-transformed columns
+        pca_score_columns = [col for col in features.columns if '_PCA_' in col]
+        features['PCA_Average'] = features[pca_score_columns].mean(axis=1)
+        features['PCA_Rank'] = (
+            features.groupby(self.project_id_col)['PCA_Average']
+            .rank(ascending=False, method='min', na_option='bottom')
         )
+        features['PCA_Relative_Rank'] = features['PCA_Rank'] / total_experts
+        # Compute average and ranks of all numeric columns (excluding IDs)
+        features['All_Columns_Average'] = features[numeric_columns].mean(axis=1)
+        features['All_Columns_Rank'] = (
+            features.groupby(self.project_id_col)['All_Columns_Average'].rank(ascending=False, method='min', na_option='bottom')
+        )
+        features['All_Columns_Relative_Rank'] = features['All_Columns_Rank'] / total_experts
+        return features
 
-        # clean up column names by removing redundant prefixes
-        new_column_names = {
-            col: col.replace('Expert_', '', 1)
-            for col in df_combined.columns if col.startswith('Expert_') and col != 'Expert_ID'
-        }
-        df_combined.rename(columns=new_column_names, inplace=True)
-
-        # merge the combined data with project and expert metadata
-        df_combined = pd.merge(df_combined, df_projects, on='Project_ID', how='left')
-        df_combined = pd.merge(df_combined, df_experts, on='Expert_ID', how='left')
-
-        return df_combined
-
-    def normalize_columns(self, df_combined):
-        """
-        Normalize specified columns in the combined dataframe.
-        """
-        # scale specified columns to a range of 0 to 1 for consistency
-        scaler = MinMaxScaler()
-        df_combined[self.columns_to_normalize] = scaler.fit_transform(df_combined[self.columns_to_normalize])
-        return df_combined
-
-    def reorder_columns(self, df_combined):
-        """
-        Reorder columns in the dataframe and return the updated dataframe.
-        """
-        # define a fixed order for columns and rearrange the dataframe
-        column_order = [
-            # expert-specific columns
-            'Expert_ID', 'Expert_Full_Name', 'Expert_Gender', 'Expert_Research_Types', 'Expert_Seniority',
-            'Expert_Experience_Reviewer', 'Expert_Experience_Panel', 'Expert_Number_Publications', 'Expert_Number_Citations',
-            # project-specific columns
-            'Project_ID', 'Project_Title', 'Project_Research_Types',
-            # similarity scores (Jaccard, Content, MeSH)
-            'Research_Type_Similarity_Score',
-            'Research_Areas_Jaccard_Similarity', 'Research_Approaches_Jaccard_Similarity',
-            'Topic_Similarity_Max', 'Topic_Similarity_Avg',
-            'Objectives_Max_Similarity_Max', 'Objectives_Max_Similarity_Avg',
-            'Objectives_Avg_Similarity_Max', 'Objectives_Avg_Similarity_Avg',
-            'Methods_Max_Similarity_Max', 'Methods_Max_Similarity_Avg',
-            'Methods_Avg_Similarity_Max', 'Methods_Avg_Similarity_Avg',
-            'Methods_Max_Similarity_Weighted_Max', 'Methods_Max_Similarity_Weighted_Avg',
-            'Methods_Avg_Similarity_Weighted_Max', 'Methods_Avg_Similarity_Weighted_Avg',
-            'MeSH_Semantic_Coverage_Score', 'MeSH_Max_Similarity_Max',
-            'MeSH_Max_Similarity_Avg', 'MeSH_Avg_Similarity_Max',
-            'MeSH_Avg_Similarity_Avg', 'MeSH_Max_Similarity_Weighted_Max',
-            'MeSH_Max_Similarity_Weighted_Avg', 'MeSH_Avg_Similarity_Weighted_Max',
-            'MeSH_Avg_Similarity_Weighted_Avg'
-        ]
-        return df_combined[column_order]
-
-    def save_combined_data(self, df_combined):
-        """
-        Save the combined similarity scores to a file.
-        """
-        # export the final combined dataframe to a tab-separated file
-        df_combined.to_csv(self.file_path_combined_scores, sep='\t', index=False)

@@ -3,11 +3,8 @@
 # Output files similarity scores - paths relative to SCORES_PATH defined in config_general.
 FILE_EXPERT_PROJECT_RESEARCH_TYPE_SIMILARITY = 'expert_project_research_type_similarity_scores.pkl'
 FILE_EXPERT_PROJECT_CONTENT_SIMILARITY = 'expert_project_content_similarity_scores.pkl'
-FILE_EXPERT_PROJECT_MESH_SIMILARITY = 'expert_project_mesh_scores.pkl'
+FILE_EXPERT_PROJECT_MESH_SIMILARITY = 'expert_project_mesh_similarity_scores.pkl'
 FILE_EXPERT_PROJECT_LABEL_SIMILARITY = 'expert_project_label_similarity_scores.pkl'
-
-# Output file.
-FILE_COMBINED_SIMILARITY_SCORES = 'combined_similarity_scores.tsv'
 
 # Text similarity settings - used form MeSH and content similarity computations.
 TEXT_SIMILARITY_MODEL = 'FremyCompany/BioLORD-2023'
@@ -45,7 +42,8 @@ OUTPUT_COLUMNS_EXPERTS = {
     'FULL_NAME': 'Expert_Full_Name',
     'GENDER': 'Expert_Gender',
     'RESEARCH_TYPES': 'Expert_Research_Types',
-    'SENIORITY': 'Expert_Seniority',
+    'SENIORITY_PUBLICATIONS': 'Expert_Seniority_Publications',
+    'SENIORITY_REVIEWER': 'Expert_Seniority_Reviewer',
     'EXPERIENCE_REVIEWER': 'Expert_Experience_Reviewer',
     'EXPERIENCE_PANEL': 'Expert_Experience_Panel',
     'NUMBER_PUBLICATIONS': 'Expert_Number_Publications',
@@ -53,13 +51,9 @@ OUTPUT_COLUMNS_EXPERTS = {
 }
 
 OUTPUT_COLUMN_RESEARCH_TYPE_SIMILARITY = 'Research_Type_Similarity_Score'
-OUTPUT_COLUMN_EXPERT_SENIORITY = 'Expert_Seniority'
+OUTPUT_COLUMN_EXPERT_SENIORITY_PUBLICATIONS = 'Expert_Seniority_Publications'
+OUTPUT_COLUMN_EXPERT_SENIORITY_REVIEWER = 'Expert_Seniority_Reviewer'
 
-# Columns to normalize. !!!!! VER !!!!!
-COLUMNS_TO_NORMALIZE = [
-  OUTPUT_COLUMN_RESEARCH_TYPE_SIMILARITY,
-  OUTPUT_COLUMN_EXPERT_SENIORITY
-]
 
 
 

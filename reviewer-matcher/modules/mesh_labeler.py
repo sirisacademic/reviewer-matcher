@@ -1,3 +1,5 @@
+# File: mesh_labeler.py
+
 from utils.bert_mesh import BertMeshConfig, BertMesh
 from utils.text_splitter import TextSplitter
 from transformers import AutoTokenizer, AutoModel

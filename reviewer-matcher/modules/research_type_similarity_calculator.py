@@ -29,9 +29,7 @@ class ResearchTypeSimilarityCalculator:
         self.input_project_research_type_column = 'RESEARCH_TYPE'
         # Output column names.
         self.output_expert_id_column = self.output_columns_experts[self.input_expert_id_column]
-        self.output_expert_research_type_column = self.output_columns_experts[self.input_expert_research_type_column]
         self.output_project_id_column = self.output_columns_projects[self.input_project_id_column]
-        self.output_project_research_type_column = self.output_columns_projects[self.input_project_research_type_column]
         self.output_column_research_type_similarity = config_manager.get('OUTPUT_COLUMN_RESEARCH_TYPE_SIMILARITY', 'Research_Type_Similarity_Score')
        
     def compute_similarity(self, experts, projects):
