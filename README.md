@@ -33,6 +33,8 @@ Refer to individual files for detailed documentation on each module.
 
 The `main.py` script acts as the entry point for executing the Reviewer Matcher pipeline.
 
+** Please check/update the configuration files in directory ```configs``` before running the pipeline. **
+
 #### Key Features
 
 1. **Pipeline Configuration and Initialization**:
@@ -41,27 +43,37 @@ The `main.py` script acts as the entry point for executing the Reviewer Matcher 
 
 2. **Component-Based Execution**:
    - Allows execution of specific components (e.g., similarity calculation).
+   - Each component will generate the data needed to complete its processing even if the previous components in the pipeline are not included explicitely when invoking the script.
 
 3. **Testing and Debugging**:
    - Supports a test mode for smaller datasets or debugging.
-
    - Logs errors and debugging details.
 
 #### Example Usage
 
-1. **Run Full Pipeline**:
+1. **Run full pipeline**:
    ```bash
-   python main.py --config config_general.py
+   python main.py
    ```
 
-2. **Run a Specific Component**:
+2. **Run only 'data_loading' and 'project_enrichment' components for a specific call**:
    ```bash
-   python main.py --component similarity_calculation --config config_similarity_scores.py
+   python main.py --components data_loading project_enrichment --call 2022-Salut_Cardiovascular
    ```
 
-3. **Test Mode**:
+3. **Run all components except 'similarity_computation' for a specific call:**:
    ```bash
-   python main.py --test-mode --config config_general.py
+   python main.py --exclude similarity_computation --call 2018-Cancer
+   ```
+   
+3. **Run two specific components ('data_loading', 'expert_ranking') for the default call set in file config_general.py**:
+   ```bash
+   python main.py --components data_loading expert_ranking
+   ```
+
+4. **Run all the components for a specific call**:
+   ```bash
+   python main.py --call 2021-Salut_Mental
    ```
 
 ## Preliminary code structure [to be updated]
