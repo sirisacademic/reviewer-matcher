@@ -16,7 +16,7 @@ TEST_MODE = False
 TEST_NUMBER = 10
 
 # Call to be processed (used to retrieve the configuration, URLs, etc).
-CALL = '2021-Salut_Mental'
+CALL = '2023-Salut_Sexual_i_Reproductiva'
 
 # Directory with call-specific data.
 CALL_PATH = f'calls/{CALL}'
@@ -29,6 +29,9 @@ MAPPINGS_PATH = f'{CALL_PATH}/mappings'
 
 # Output scores path.
 SCORES_PATH = f'{CALL_PATH}/scores'
+
+# Output path used for predicted ranks and assignments.
+ASSIGNMENTS_PATH = f'{CALL_PATH}/predicted_assignments'
 
 # JSON file with column mappings for projects.
 # Relative to MAPPINGS_PATH !
@@ -45,11 +48,6 @@ FILE_NAME_PROJECTS = 'projects.pkl'
 # Output file experts.
 # Relative to DATA_PATH !
 FILE_NAME_EXPERTS = 'experts.pkl'
-
-# Output file expert publications.
-# Relative to DATA_PATH !
-FILE_NAME_PUBLICATIONS = 'expert_publications_openalex.pkl'
-#FILE_NAME_PUBLICATIONS = 'expert_publications_pubmed.pkl'
 
 # Combined projects.
 FILE_PATH_PROJECTS_ALL_YEARS = 'calls/all_years/projects.pkl'

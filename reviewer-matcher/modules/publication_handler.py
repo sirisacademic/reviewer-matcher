@@ -1,12 +1,13 @@
-import pandas as pd
 import os
-from tqdm import tqdm
-from utils.functions_publications import split_raw_references
+import traceback
+import pandas as pd
 
+from tqdm import tqdm
+from .data_saver import DataSaver
+from utils.functions_publications import split_raw_references
 # Needed for OpenAlex.
 from utils.citation_parser import CitationParser
 from utils.functions_publications import reconstruct_openalex_abstract, format_mesh_terms_pubmed
-
 # Needed for PubMed.
 import Levenshtein
 from utils.functions_publications import get_pubmed_content
@@ -15,7 +16,12 @@ class PublicationHandler:
     def __init__(self, config_manager):
         self.config_manager = config_manager
         self.verbose = config_manager.get('GET_PUBLICATIONS_VERBOSE', True)
-        self.default_source = config_manager.get('PUBLICATIONS_SOURCE', 'openalex')
+        self.source = config_manager.get('PUBLICATIONS_SOURCE', 'openalex')
+        self.save_extracted_publication_data = config_manager.get('SAVE_EXTRACTED_PUBLICATION_DATA', True)
+        self.file_name_raw_publication_data = config_manager.get('FILE_NAME_RAW_PUBLICATION_DATA', 'expert_raw_publications.tsv')
+        # If True, the column COL_EXTRACTED_PUBLICATION_TITLES from the experts dataframe is used and the publications are not splitted again.
+        self.use_previously_extracted_publication_titles = config_manager.get('USE_PREVIOUSLY_EXTRACTED_PUBLICATION_TITLES', False)
+        self.data_saver = DataSaver(config_manager)
         self._initialize_source = {
             'openalex': self._initialize_openalex,
             'pubmed': self._initialize_pubmed
@@ -30,15 +36,16 @@ class PublicationHandler:
 
     def get_publications_experts(self, experts, source=''):
         if source not in self._initialize_source:
-            source = self.default_source
+            source = self.source
         self._initialize_source[source]()
         return self._get_publications_openalex(experts) if source=='openalex' else self._get_publications_pubmed(experts)
 
     def _get_input_data(self, experts):
         # Input column names
-        col_expert_raw_publications = self.config_manager.get('COLUMN_EXPERT_PUBLICATIONS', 'RAW_PUBLICATIONS')
         col_expert_id = self.config_manager.get('COLUMN_EXPERT_ID', 'ID')
         col_expert_full_name = self.config_manager.get('COLUMN_EXPERT_FULL_NAME', 'FULL_NAME')
+        col_expert_raw_publications = self.config_manager.get('COLUMN_EXPERT_PUBLICATIONS', 'RAW_PUBLICATIONS')
+        col_extracted_publication_titles = self.config_manager.get('COL_EXTRACTED_PUBLICATION_TITLES', 'PUBLICATION_TITLES')
         # Output column names
         col_pub_publication_id = self.config_manager.get('COLUMN_PUB_PUBLICATION_ID', 'PUB_ID')
         col_pub_expert_id = self.config_manager.get('COLUMN_PUB_EXPERT_ID', 'EXPERT_ID')
@@ -50,7 +57,7 @@ class PublicationHandler:
         col_pub_mesh_openalex = self.config_manager.get('COLUMN_PUB_MESH_OPENALEX', 'MESH_OPENALEX')
         col_pub_mesh_pubmed = self.config_manager.get('COLUMN_PUB_MESH_PUBMED', 'MESH_PUBMED')
         # List of output columns.
-        output_columns = [
+        output_columns_publications = [
             col_pub_publication_id,
             col_pub_expert_id,
             col_expert_full_name,
@@ -63,10 +70,29 @@ class PublicationHandler:
             col_pub_mesh_pubmed
         ]
         # Get input data from experts' dataframe.
-        references_list = experts[col_expert_raw_publications].values.tolist()
+        if self.use_previously_extracted_publication_titles and col_extracted_publication_titles in experts:
+            references_list = experts[col_extracted_publication_titles].values.tolist()
+            print('*** Using previously extracted publication titles available in experts data ***')
+        else:
+            references_list = experts[col_expert_raw_publications].values.tolist()
         expert_full_names = experts[col_expert_full_name].values.tolist()
         expert_ids = experts[col_expert_id].values.tolist()
-        return references_list, expert_full_names, expert_ids, output_columns
+        return references_list, expert_full_names, expert_ids, output_columns_publications
+
+    def _save_raw_publication_data(self, expert_ids, expert_full_names, references_list, cleaned_references_list):
+        """Saves raw extracted publication data to a TSV file for debugging purposes."""
+        # Prepare the debug data as a dictionary
+        raw_publication_data = {
+            "expert_ids": expert_ids,
+            "expert_full_names": expert_full_names,
+            "references_list": references_list,
+            "cleaned_references_list": cleaned_references_list
+        }
+        # Create and save a DataFrame from the raw publication data.
+        df_raw_publication_data = pd.DataFrame(raw_publication_data)
+        # Save the DataFrame to a TSV file
+        self.data_saver.save_data(df_raw_publication_data, self.file_name_raw_publication_data)
+        print(f'Raw publication data extracted from experts saved to {self.file_name_raw_publication_data}')
 
     def _process_references(self, references_list):
         # Process each item in the list
@@ -80,6 +106,9 @@ class PublicationHandler:
         # Get clean references from raw data.
         references_list, expert_full_names, expert_ids, output_columns = self._get_input_data(experts)
         cleaned_references_list = self._process_references(references_list)
+        # If indicated, save raw extracted data for debugging.
+        if self.save_extracted_publication_data:
+            self._save_raw_publication_data(expert_ids, expert_full_names, references_list, cleaned_references_list)
         # Process references for each expert.
         list_publications = []
         # Separator (used for MeSH terms in PubMed format)
@@ -94,7 +123,14 @@ class PublicationHandler:
             for reference in references:
                 try:
                     citation = self.citation_parser.link_citation(reference, results='advanced')
-                    if citation['result'] is not None:
+                    if 'result' not in citation:
+                        error_message = (
+                            f" - Error with expert ID: {expert_id}, Name: {expert_full_name}, "
+                            f" - Reference: {reference}\n"
+                            f" - CitationParser response: {citation}\n"
+                        )
+                        print(error_message)
+                    elif citation['result'] is not None:
                         title = citation['full-publication']['title']
                         abstract = reconstruct_openalex_abstract(citation['full-publication']['abstract_inverted_index'])
                         mesh_openalex = citation['full-publication']['mesh']
@@ -119,7 +155,14 @@ class PublicationHandler:
                                 mesh_pubmed)
                               )
                 except Exception as e:
-                    print(f'Error with expert {expert_id}, reference: {reference} | {e}')
+                    #print(f'Error with expert {expert_id}, reference: {reference} | {e}')
+                    # Detailed error information
+                    error_message = (
+                        f" - Error with expert ID: {expert_id}, Name: {expert_full_name}, "
+                        f" - Reference: {reference}\n"
+                        f" - Error: {str(e)}\n"
+                    )
+                    print(error_message)
             if not self.verbose:
                 os.system('cls' if os.name == 'nt' else 'clear')
         publications = pd.DataFrame(list_publications, columns=output_columns)
@@ -135,6 +178,9 @@ class PublicationHandler:
         # Get clean references from raw data.
         references_list, expert_full_names, expert_ids, output_columns = self._get_input_data(experts)
         cleaned_references_list = self._process_references(references_list)
+        # If indicated, save raw extracted data for debugging.
+        if self.save_extracted_publication_data:
+            self._save_raw_publication_data(expert_ids, expert_full_names, references_list, cleaned_references_list)
         # Process references for each expert.
         list_publications = []
         for expert_data in tqdm(

@@ -20,7 +20,11 @@ class FeatureGenerator:
         # Output columns experts data.
         self.output_column_expert_seniority_publications = config_manager.get('OUTPUT_COLUMN_EXPERT_SENIORITY_PUBLICATIONS', 'Expert_Seniority_Publications')
         self.output_column_expert_seniority_reviewer = config_manager.get('OUTPUT_COLUMN_EXPERT_SENIORITY_REVIEWER', 'Expert_Seniority_Reviewer')
+        # Whether to standarize data.
+        self.standarize_numeric_data = config_manager.get('STANDARIZE_NUMERIC_DATA', False)
         self.scaler = StandardScaler()
+        # Whether to reduce dimensions by means of PCA.
+        self.compute_pca_scores = config_manager.get('COMPUTE_PCA_SCORES', False)
 
     def _unify_id_types(self, score_dataframes):
         """Unify the data types of the ID columns across DataFrames."""
@@ -63,27 +67,35 @@ class FeatureGenerator:
         # Fill missing values with the mean of the column
         features[numeric_columns] = features[numeric_columns].fillna(features[numeric_columns].mean())
         # Normalize numeric columns except Expert_ID and Project_ID
-        features[numeric_columns] = self.scaler.fit_transform(features[numeric_columns])
-        # Apply PCA to feature groups
-        for group_name, group_features in self.feature_groups.items():
-            if any(feature in features.columns for feature in group_features):
-                # Extract the feature group subset
-                valid_features = [f for f in group_features if f in features.columns]
-                # Perform PCA
-                pca = PCA(n_components=self.pca_variance_threshold)
-                X_pca = pca.fit_transform(features[valid_features])
-                # Add PCA components to the main dataframe
-                pca_columns = [f'{group_name}_PCA_{i+1}' for i in range(X_pca.shape[1])]
-                pca_df = pd.DataFrame(X_pca, columns=pca_columns, index=features.index)
-                features = pd.concat([features, pca_df], axis=1)
-        # Compute average and ranks of PCA-transformed columns
-        pca_score_columns = [col for col in features.columns if '_PCA_' in col]
-        features['PCA_Average'] = features[pca_score_columns].mean(axis=1)
-        features['PCA_Rank'] = (
-            features.groupby(self.project_id_col)['PCA_Average']
-            .rank(ascending=False, method='min', na_option='bottom')
-        )
-        features['PCA_Relative_Rank'] = features['PCA_Rank'] / total_experts
+        if self.standarize_numeric_data:
+            features[numeric_columns] = self.scaler.fit_transform(features[numeric_columns])
+        if self.compute_pca_scores:
+            # Apply PCA to feature groups
+            for group_name, group_features in self.feature_groups.items():
+                if any(feature in features.columns for feature in group_features):
+                    # Extract the feature group subset
+                    valid_features = [f for f in group_features if f in features.columns]
+                    # Standardize PCA-specific features if self.standarize_numeric_data is False
+                    if not self.standarize_numeric_data:
+                        pca_features = self.scaler.fit_transform(features[valid_features])
+                    else:
+                        # Use the original features directly if already standardized
+                        pca_features = features[valid_features].values
+                    # Perform PCA
+                    pca = PCA(n_components=self.pca_variance_threshold)
+                    X_pca = pca.fit_transform(pca_features)
+                    # Add PCA components to the main dataframe
+                    pca_columns = [f'{group_name}_PCA_{i+1}' for i in range(X_pca.shape[1])]
+                    pca_df = pd.DataFrame(X_pca, columns=pca_columns, index=features.index)
+                    features = pd.concat([features, pca_df], axis=1)
+            # Compute average and ranks of PCA-transformed columns
+            pca_score_columns = [col for col in features.columns if '_PCA_' in col]
+            features['PCA_Average'] = features[pca_score_columns].mean(axis=1)
+            features['PCA_Rank'] = (
+                features.groupby(self.project_id_col)['PCA_Average']
+                .rank(ascending=False, method='min', na_option='bottom')
+            )
+            features['PCA_Relative_Rank'] = features['PCA_Rank'] / total_experts
         # Compute average and ranks of all numeric columns (excluding IDs)
         features['All_Columns_Average'] = features[numeric_columns].mean(axis=1)
         features['All_Columns_Rank'] = (

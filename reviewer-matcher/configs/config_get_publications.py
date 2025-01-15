@@ -1,5 +1,18 @@
+# Save raw extracted publications info from expert's dataframe with publication titles, etc. before retrieving the publication data.
+SAVE_EXTRACTED_PUBLICATION_DATA = True
+FILE_NAME_RAW_PUBLICATION_DATA = 'expert_raw_publications.tsv'
+
+# Use previously extracted publications titles?
+# If the column COL_EXTRACTED_PUBLICATION_TITLES exists the publications are not splitted but retrieved from this column.
+USE_PREVIOUSLY_EXTRACTED_PUBLICATION_TITLES = True
+
 # Default source from where to retrieve publications ('openalex' or 'pubmed').
-PUBLICATIONS_SOURCE = 'openalex'
+#PUBLICATIONS_SOURCE = 'openalex'
+PUBLICATIONS_SOURCE = 'pubmed'
+
+# Output file expert publications.
+# Relative to DATA_PATH !
+FILE_NAME_PUBLICATIONS = f'expert_publications_{PUBLICATIONS_SOURCE}.pkl'
 
 # OpenAlex base url.
 OPENALEX_BASE_URL = 'https://openalex.org/'
@@ -20,6 +33,8 @@ MODEL_NER_PUB_TITLES = 'SIRIS-Lab/patstat-citation-parser-ENTITY'
 COLUMN_EXPERT_PUBLICATIONS = 'RAW_PUBLICATIONS'
 COLUMN_EXPERT_FULL_NAME = 'FULL_NAME' 
 COLUMN_EXPERT_ID = 'ID' 
+# Available if extracted previously by means of citation parser NER model.
+COL_EXTRACTED_PUBLICATION_TITLES = 'PUBLICATION_TITLES'
 
 # Output columns.
 COLUMN_PUB_PUBLICATION_ID = 'PUB_ID'

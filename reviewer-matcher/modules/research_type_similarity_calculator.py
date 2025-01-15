@@ -30,6 +30,8 @@ class ResearchTypeSimilarityCalculator:
         # Output column names.
         self.output_expert_id_column = self.output_columns_experts[self.input_expert_id_column]
         self.output_project_id_column = self.output_columns_projects[self.input_project_id_column]
+        self.output_expert_research_type_column = self.output_columns_experts[self.input_expert_research_type_column]
+        self.output_project_research_type_column = self.output_columns_projects[self.input_project_research_type_column]
         self.output_column_research_type_similarity = config_manager.get('OUTPUT_COLUMN_RESEARCH_TYPE_SIMILARITY', 'Research_Type_Similarity_Score')
        
     def compute_similarity(self, experts, projects):
@@ -41,6 +43,8 @@ class ResearchTypeSimilarityCalculator:
             self.input_expert_id_column: self.output_expert_id_column,
             self.input_expert_research_type_column: self.output_expert_research_type_column
         })
+        print(experts.columns)
+        print(experts.head(1).values)
         # Select and rename project columns.
         projects = projects[
             [self.input_project_id_column, self.input_project_research_type_column]
@@ -48,6 +52,8 @@ class ResearchTypeSimilarityCalculator:
             self.input_project_id_column: self.output_project_id_column,
             self.input_project_research_type_column: self.output_project_research_type_column
         })
+        print(projects.columns)
+        print(projects.head(1).values)
         # Create a Cartesian product of experts and projects with their research types.
         expert_project_research_types = experts.merge(projects, how='cross')
         # Apply similarity computation for each pair.
