@@ -4,10 +4,12 @@
 1. [Introduction](#introduction)
 2. [Project Objectives](#project-objectives)
 3. [Architecture Overview](#architecture-overview)
-4. [Setup Guide](docs/setup.md)
-5. [Class Reference](docs/classes.md)
-6. [Contribution Guidelines](docs/contribute.md)
-7. [Branching Model](docs/branching_model.md)
+4. [Main Script](#main-script)
+5. [Data Processing Pipeline](docs/data_processing_pipeline.md)
+6. [Class Reference](docs/classes.md)
+5. [Setup Guide](docs/setup.md)
+7. [Contribution Guidelines](docs/contribute.md)
+8. [Branching Model](docs/branching_model.md)
 
 ## Introduction
 
@@ -27,13 +29,26 @@ The project aims to:
 The tool is modular, with components for data preprocessing, metadata enrichment, similarity calculation, and assignment optimization.
 Refer to individual files for detailed documentation on each module.
 
-## Scripts Overview
+### Preliminary code structure [to be updated]
+
+In the image, we provide an overview of the core modules of the tool, highlighting its fundamental components and their primary functions. Each module represents a key area of functionality, illustrating how different parts of the tool work together to deliver a cohesive experience. This breakdown serves as an introduction to the essential building blocks of the tool, helping users understand its architecture and operational flow.
+
+![image](https://github.com/user-attachments/assets/e47e2ad0-8946-4ad9-84ee-ecba3c8783f4)
+
+### Data
+
+The data shown for demonstartion is artificially generated to demonstrate the tool’s capabilities, as the actual training data is confidential and cannot be shared publicly.
+
+https://docs.google.com/spreadsheets/d/1lUBxxTinGEsp1tmXDTsw29en6hKfYR798QdEFgQAPOU/edit?gid=0#gid=0
+
+
+## Main Script
 
 ### `main.py`
 
 The `main.py` script acts as the entry point for executing the Reviewer Matcher pipeline.
 
-** Please check/update the configuration files in directory ```configs``` before running the pipeline. **
+**Please check/update the configuration files in directory ```configs``` before running the pipeline.**
 
 #### Key Features
 
@@ -75,18 +90,6 @@ The `main.py` script acts as the entry point for executing the Reviewer Matcher 
    ```bash
    python main.py --call 2021-Salut_Mental
    ```
-
-## Preliminary code structure [to be updated]
-
-In the image, we provide an overview of the core modules of the tool, highlighting its fundamental components and their primary functions. Each module represents a key area of functionality, illustrating how different parts of the tool work together to deliver a cohesive experience. This breakdown serves as an introduction to the essential building blocks of the tool, helping users understand its architecture and operational flow.
-
-![image](https://github.com/user-attachments/assets/e47e2ad0-8946-4ad9-84ee-ecba3c8783f4)
-
-## Data
-
-The data shown for demonstartion is artificially generated to demonstrate the tool’s capabilities, as the actual training data is confidential and cannot be shared publicly.
-
-https://docs.google.com/spreadsheets/d/1lUBxxTinGEsp1tmXDTsw29en6hKfYR798QdEFgQAPOU/edit?gid=0#gid=0
 
 ### 🛟 A note on language
 
