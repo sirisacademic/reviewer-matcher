@@ -187,7 +187,6 @@ reviewer-matcher/notebooks/
 *bkp*
 *BKP*
 *.tsv
-files-to-remove.txt
 
 # Ignore data files in calls directory
 reviewer-matcher/calls/**/*.pkl
