@@ -31,9 +31,7 @@ To initialize the pipeline, you need to pass the following parameters:
 
 ```python
 from data_processing_pipeline import DataProcessingPipeline
-from core.settings_manager import SettingsManager
 
-config_manager = SettingsManager(config_path="path/to/configs")
 pipeline = DataProcessingPipeline(config_manager, test_mode=True, test_number=5)
 ```
 
