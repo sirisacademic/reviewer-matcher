@@ -36,8 +36,11 @@ def split_raw_references(raw_references, threshold=100):
     text = re.sub(r'\n\s*\n', placeholder, raw_references)
     # Split by placeholder first to isolate references
     references = text.split(placeholder)
+    # If there is only one we attempt to split by \n or |.
     if len(references) == 1:
         references = text.split('\n')
+    if len(references) == 1:
+        references = text.split('|')
     # Merge parts of references that might have been split by internal newlines
     merged_references = []
     current_reference = ''

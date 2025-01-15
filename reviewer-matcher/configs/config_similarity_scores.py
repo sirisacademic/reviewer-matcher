@@ -30,6 +30,8 @@ RELATED_TYPES = {
 EXCLUDE_TYPES = {'translational'}
 PRIORITY_TYPE = 'basic'
 
+# !!! TODO: Reorganize the definition of input/output columns across configuration files !!!
+
 # Column mappings for projects and experts.
 OUTPUT_COLUMNS_PROJECTS = {
     'ID': 'Project_ID',
@@ -47,13 +49,20 @@ OUTPUT_COLUMNS_EXPERTS = {
     'EXPERIENCE_REVIEWER': 'Expert_Experience_Reviewer',
     'EXPERIENCE_PANEL': 'Expert_Experience_Panel',
     'NUMBER_PUBLICATIONS': 'Expert_Number_Publications',
-    'NUMBER_CITATIONS': 'Expert_Number_Citations'
+    'NUMBER_CITATIONS': 'Expert_Number_Citations',
+    'MAX_PROJECTS_REVIEW': 'Expert_Max_Projects_Review'
 }
 
 OUTPUT_COLUMN_RESEARCH_TYPE_SIMILARITY = 'Research_Type_Similarity_Score'
 OUTPUT_COLUMN_EXPERT_SENIORITY_PUBLICATIONS = 'Expert_Seniority_Publications'
 OUTPUT_COLUMN_EXPERT_SENIORITY_REVIEWER = 'Expert_Seniority_Reviewer'
 
+# Columns to normalize. !!!!! VER !!!!!
+COLUMNS_TO_NORMALIZE = [
+  OUTPUT_COLUMN_RESEARCH_TYPE_SIMILARITY,
+  OUTPUT_COLUMN_EXPERT_SENIORITY_PUBLICATIONS,
+  OUTPUT_COLUMN_EXPERT_SENIORITY_REVIEWER
+]
 
 
 

@@ -368,17 +368,18 @@ def label_by_topic(pipe, generation_args, prompt, title, abstract, topics, max_t
       model_response = get_model_response(pipe, generation_args, prompt_text, max_retries, retry_delay)
       #print(model_response)
       parsed_data = extract_and_parse_json(model_response, default_structure_labels)
-      if parsed_data == None and attempt == max_retries-1:
+      if parsed_data is None and attempt == max_retries-1:
         parsed_data = default_structure_labels
         print(f'Returning the default values as the data could not be obtained after {max_retries} attempts for prompt:')
         print(prompt)
       else:
-        for key, value in parsed_data.items():
-          if key in combined_results:
-            combined_results[key].extend(value) if isinstance(value, list) else value
-          else:
-            combined_results[key] = value
-        break
+        if parsed_data is not None:
+            for key, value in parsed_data.items():
+              if key in combined_results:
+                combined_results[key].extend(value) if isinstance(value, list) else value
+              else:
+                combined_results[key] = value
+            break
       time.sleep(retry_delay)
   #print(combined_results)
   return combined_results

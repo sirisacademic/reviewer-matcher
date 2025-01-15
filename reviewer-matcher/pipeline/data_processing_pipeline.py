@@ -20,7 +20,8 @@ from modules.research_type_similarity_calculator import ResearchTypeSimilarityCa
 # !!!! This is to be integrated into the ExpertProfiler class. !!!!
 from modules.expert_seniority_calculator import ExpertSeniorityCalculator
 from modules.feature_generator import FeatureGenerator
-#from modules.expert_assigner import ExpertAssigner
+from modules.expert_ranker import ExpertRanker
+from modules.expert_assigner import ExpertAssigner
 #from modules.expert_profiler import ExpertProfiler
 
 class DataProcessingPipeline:
@@ -53,9 +54,13 @@ class DataProcessingPipeline:
         self.label_similarity_scores = None
         self.mesh_similarity_scores = None
         self.content_similarity_scores = None
+        self.research_type_similarity_scores = None
+        self.expert_project_features = None
+        self.expert_project_predicted_ranks = None
         # Initialize paths
         self.data_path = self.config_manager.get('DATA_PATH')
         self.scores_output_dir = self.config_manager.get('SCORES_PATH')
+        self.assignments_output_dir = self.config_manager.get('ASSIGNMENTS_PATH')
         self.mappings_path = self.config_manager.get('MAPPINGS_PATH')
         self.file_projects_pipeline = self.config_manager.get('FILE_NAME_PROJECTS')
         self.file_experts_pipeline = self.config_manager.get('FILE_NAME_EXPERTS')
@@ -65,6 +70,8 @@ class DataProcessingPipeline:
         self.file_mesh_similarity_scores = config_manager.get('FILE_EXPERT_PROJECT_MESH_SIMILARITY') 
         self.file_content_similarity_scores = config_manager.get('FILE_EXPERT_PROJECT_CONTENT_SIMILARITY')
         self.file_expert_project_features = config_manager.get('FILE_EXPERT_PROJECT_FEATURES')
+        self.file_expert_project_predictions = config_manager.get('FILE_EXPERT_PROJECT_PREDICTIONS')
+        self.file_expert_project_assignments = config_manager.get('FILE_EXPERT_PROJECT_ASSIGNMENTS')
         # Initialize modules
         self._initialize_modules()
         # Component mapping
@@ -107,7 +114,8 @@ class DataProcessingPipeline:
         # !!!! This is to be integrated into the ExpertProfiler class. !!!!
         self.expert_seniority_calculator = ExpertSeniorityCalculator(self.config_manager)
         self.feature_generator = FeatureGenerator(self.config_manager)
-        #self.expert_assigner = ExpertAssigner(self.config_manager)
+        self.expert_ranker = ExpertRanker(self.config_manager)
+        self.expert_assigner = ExpertAssigner(self.config_manager)
         #self.expert_profiler = ExpertProfiler(self.config_manager)
 
     def _run_component(self, component_name, *args, **kwargs):
@@ -201,7 +209,8 @@ class DataProcessingPipeline:
                 else:
                     print('Retrieving publication data from experts...')
                     experts = self._get_experts()
-                    self.publications = self.publication_handler.get_publications_experts(experts, source='openalex')
+                    # The source used to retrieve publications is set in config_get_publications.py.
+                    self.publications = self.publication_handler.get_publications_experts(experts)
                     self.data_saver.save_data(self.publications, self.file_publications_pipeline)
                 # Truncate abstracts too long before processing.
                 max_abstract_length = self.config_manager.get('PUB_ABSTRACT_MAX_LENGTH', 5000)
@@ -401,25 +410,44 @@ class DataProcessingPipeline:
     def _rank_experts(self):
         """Rank experts based on similarity scores."""
         try:
-            # Retrieve experts data.
-            experts = self._get_experts()
-            # Retrieve or compute similarity scores.
-            self._get_similarity_scores()
-            print('Generating features / ranking experts with respect to projects...')
-            # Score dataframes
-            score_dataframes = [
-                self.content_similarity_scores,
-                self.mesh_similarity_scores,
-                self.label_similarity_scores,
-                self.research_type_similarity_scores
-            ]
-            # Generate the features
-            self.expert_project_features = self.feature_generator.generate_features(experts, score_dataframes)
-            self.data_saver.save_data(
-                self.expert_project_features,
-                self.file_expert_project_features,
-                output_dir=self.scores_output_dir
-              )
+            # Get or compute features.
+            features_file_path = os.path.join(self.scores_output_dir, self.file_expert_project_features)
+            if os.path.exists(features_file_path) and not self.force_recompute:
+                print('Loading pre-computed features...')
+                self.expert_project_features = load_file(features_file_path)
+            else:
+                # Retrieve experts data.
+                experts = self._get_experts()
+                # Retrieve or compute similarity scores.
+                self._get_similarity_scores()
+                # Score dataframes
+                score_dataframes = [
+                    self.content_similarity_scores,
+                    self.mesh_similarity_scores,
+                    self.label_similarity_scores,
+                    self.research_type_similarity_scores
+                ]
+                # Generate and save features used to predict ranks.
+                print('Generating features for predictions...')
+                self.expert_project_features = self.feature_generator.generate_features(experts, score_dataframes)
+                self.data_saver.save_data(
+                    self.expert_project_features,
+                    self.file_expert_project_features,
+                    output_dir=self.scores_output_dir
+                  )
+            # Get or compute probabilities with pre-trained model and rank expert-project pairs.
+            probabilities_file_path = os.path.join(self.assignments_output_dir, self.file_expert_project_predictions)
+            if os.path.exists(probabilities_file_path) and not self.force_recompute:
+                print('Loading pre-computed probabilities and rankings...')
+                self.expert_project_predicted_ranks = load_file(probabilities_file_path)
+            else:
+                print('Getting predictions and rankings for expert-project pairs...')
+                self.expert_project_predicted_ranks = self.expert_ranker.generate_predictions(self.expert_project_features)
+                self.data_saver.save_data(
+                    self.expert_project_predicted_ranks,
+                    self.file_expert_project_predictions,
+                    output_dir=self.assignments_output_dir
+                  )
         except Exception as e:
             # Print the error message
             print(f"Error in _rank_experts: {e}")
@@ -429,11 +457,76 @@ class DataProcessingPipeline:
             raise
 
     def _assign_experts(self):
-        """Assign experts to projects."""
+        """Generate final expert-project assignments based on rankings."""
         try:
-            print('Assigning experts to projects...')
+            # Get the required data
+            if self.expert_project_predicted_ranks is None:
+                self._rank_experts()  # Ensure rankings are generated/loaded.
+            experts = self._get_experts()
+            projects = self._get_projects()
+            print(f'\nAssigning {len(experts)} experts to {len(projects)} projects...')
+            # First analyze potential issues before making assignments
+            print('Analyzing potential assignment issues...')
+            # Check for expert capacity issues
+            capacity_issues = self.expert_assigner.get_expert_capacity_issues(
+                self.expert_project_predicted_ranks,
+                experts
+            )
+            if not capacity_issues.empty:
+                print(f'Pre-assignment warning: There are {len(capacity_issues)} experts that could be overloaded. Please check the final assignment reports.')
+            # Generate assignments
+            print('Generating expert-project assignments...')
+            self.expert_project_assignments = self.expert_assigner.generate_assignments(
+                self.expert_project_predicted_ranks,
+                experts,
+                projects
+            )
+            # Save assignments
+            self.data_saver.save_data(
+                self.expert_project_assignments,
+                self.file_expert_project_assignments,
+                output_dir=self.assignments_output_dir
+            )
+            print('\nExpert-project assignments generated and saved successfully.')
+            # Analyze final assignment outcomes
+            print('\nAnalyzing assignment outcomes...')
+            # Get overall statistics
+            assignment_stats = self.expert_assigner.get_assignment_stats(self.expert_project_assignments)
+            print('Assignment Statistics:')
+            print(f"Total projects assigned: {len(self.expert_project_assignments['Project_ID'].unique())}")
+            print(f"Gender distribution in proposed experts: {assignment_stats['gender_distribution']['proposed']}")
+            print(f"Gender distribution in alternative experts: {assignment_stats['gender_distribution']['alternative']}")
+            # Get expert assignment distribution
+            expert_distribution = self.expert_assigner.get_expert_assignment_distribution(
+                self.expert_project_assignments,
+                experts
+            )
+            # Get comprehensive project status
+            project_status = self.expert_assigner.get_project_assignment_status(
+                self.expert_project_assignments,
+                projects
+            )
+            # Display summary of incomplete_projects/problematic projects
+            flexed_projects = project_status[project_status['All_Requirements_Met'] == False]
+            if not flexed_projects.empty:
+                print(f'Post-assignment warning: There are {len(flexed_projects)} projects for which the assignment constrains were flexed.')
+            
+            # Save all reports
+            reports = {
+                'expert_distribution': expert_distribution if not expert_distribution.empty else None,
+                'flexed_projects': flexed_projects if not flexed_projects.empty else None,
+            }
+            for report_name, df in reports.items():
+                if df is not None:
+                    filename = f"assignment_issues_{report_name}.tsv"
+                    print(f"\nSaving {report_name} report to {filename}")
+                    self.data_saver.save_data(
+                        df,
+                        filename,
+                        output_dir=self.assignments_output_dir
+                    )
         except Exception as e:
             print(f"Error in _assign_experts: {e}")
+            traceback.print_exc()
             raise
-
 

@@ -1,5 +1,7 @@
 # File: mesh_labeler.py
 
+import sys
+from tqdm import tqdm
 from utils.bert_mesh import BertMeshConfig, BertMesh
 from utils.text_splitter import TextSplitter
 from transformers import AutoTokenizer, AutoModel
@@ -56,9 +58,10 @@ class MeSHLabeler:
 
     def label_with_mesh(self, data, input_columns):
         """Apply MeSH term tagging for the specified columns in the dataset."""
+        tqdm.pandas(desc=f'Obtaining MeSH terms for columns: {", ".join(input_columns)}', file=sys.stdout)
         for col_name, col_type in input_columns.items():
             if col_name in data.columns:
-                data[f'MESH_{col_name}'] = data[col_name].apply(
+                data[f'MESH_{col_name}'] = data[col_name].progress_apply(
                     lambda text: self.get_mesh_terms(
                         text.split(self.separator) if col_type == 'list' else text,
                         return_occurrences=False

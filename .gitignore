@@ -171,17 +171,28 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-local_data
 local_data/
 
-output
-output/
-train_eval
-train_eval/
-bkp
-bkp/
-BKP
-BKP/
+reviewer-matcher/train_eval/agreement_annotators/
+reviewer-matcher/train_eval/analysis/
+reviewer-matcher/train_eval/other_experiments/
+reviewer-matcher/train_eval/output_train_eval/
+reviewer-matcher/train_eval/data/
+reviewer-matcher/train_eval/models/
+reviewer-matcher/train_eval/predictions/
+reviewer-matcher/train_eval/results/
+reviewer-matcher/notebooks/
+**/__pycache__/
+**/output/
 *bkp*
+*BKP*
+*.tsv
+files-to-remove.txt
+
+# Ignore data files in calls directory
+reviewer-matcher/calls/**/*.pkl
+reviewer-matcher/calls/**/*.tsv
+reviewer-matcher/calls/**/*.xlsx
+
 
 

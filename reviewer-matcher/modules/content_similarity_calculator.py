@@ -75,7 +75,7 @@ class ContentSimilarityCalculator:
     def _process_pub_project_pair(self, pub_row, project_row):
         """Process a single publication-project pair to compute similarity scores."""
         # Topic similarity.
-        print('Computing research topic similarity.')
+        #print('Computing research topic similarity.')
         if pub_row[self.research_topic_column] and project_row[self.research_topic_column]:
             topic_similarity = util.pytorch_cos_sim(
                 self.model.encode(pub_row[self.research_topic_column], convert_to_tensor=True, show_progress_bar=False),
@@ -84,21 +84,21 @@ class ContentSimilarityCalculator:
         else:
             topic_similarity = 0
         # Objectives similarity.
-        print('Computing objectives similarity.')
+        #print('Computing objectives similarity.')
         objectives_avg_sim, objectives_max_sim = compute_list_similarity(
             self.model,
             convert_to_list(pub_row[self.objectives_column], self.separator_output),
             convert_to_list(project_row[self.objectives_column], self.separator_output)
         )
         # Methods specific similarity - not weighted.
-        print('Computing specific methods similarity.')
+        #print('Computing specific methods similarity.')
         methods_specific_avg_sim, methods_specific_max_sim = compute_list_similarity(
             self.model,
             convert_to_list(pub_row[self.methods_specific_column], self.separator_output),
             convert_to_list(project_row[self.methods_specific_column], self.separator_output)
         )
         # All methods similarity.
-        print('Computing all methods similarity.')
+        #print('Computing all methods similarity.')
         pub_methods = convert_to_list(pub_row[self.methods_column], self.separator_output)
         proj_methods = convert_to_list(project_row[self.methods_column], self.separator_output)
         methods_avg_sim, methods_max_sim = compute_list_similarity(self.model, pub_methods, proj_methods)

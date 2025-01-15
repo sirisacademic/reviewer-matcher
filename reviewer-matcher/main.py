@@ -24,12 +24,6 @@ REDIRECT_OUTPUT = False
 
 # Define the list of all components
 ALL_COMPONENTS = [
-    'project_mesh_tagging',
-    'publication_mesh_tagging'
-]
-
-"""
-ALL_COMPONENTS = [
     'project_data_loading',
     'expert_data_loading',
     'publication_data_loading',
@@ -39,9 +33,9 @@ ALL_COMPONENTS = [
     'publication_summarization',
     'publication_mesh_tagging',
     'similarity_computation',
-    'expert_ranking'
+    'expert_ranking',
+    'expert_assignment'
 ]
-"""
 
 def main():
 
@@ -81,7 +75,8 @@ def main():
             'configs.config_get_publications',
             'configs.config_similarity_scores',
             'configs.config_expert_profiler',
-            'configs.config_expert_ranking'
+            'configs.config_expert_ranking',
+            'train_eval.config'
         ])
         
         # Print all configurations for debugging.
