@@ -59,7 +59,7 @@ SEPARATOR_VALUES_OUTPUT = '|'
 ID_COLUMN_NAME = 'ID'
 
 # HuggingFace token.
-HF_TOKEN = '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'
+HF_TOKEN = '[NCLUDE HF TOKEN HERE]'
 
 SPACY_MODEL = 'en_core_web_sm'
 
