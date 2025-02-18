@@ -36,7 +36,9 @@ PRIORITY_TYPE = 'basic'
 OUTPUT_COLUMNS_PROJECTS = {
     'ID': 'Project_ID',
     'TITLE': 'Project_Title',
-    'RESEARCH_TYPE': 'Project_Research_Types'
+    'APPROACH_TYPE': 'Project_Type',
+    'RESEARCH_TYPE': 'Project_Research_Types',
+    'RESEARCH_APPROACHES': 'Project_Research_Approaches'
 }
 
 OUTPUT_COLUMNS_EXPERTS = {
@@ -44,6 +46,7 @@ OUTPUT_COLUMNS_EXPERTS = {
     'FULL_NAME': 'Expert_Full_Name',
     'GENDER': 'Expert_Gender',
     'RESEARCH_TYPES': 'Expert_Research_Types',
+    'RESEARCH_APPROACHES': 'Expert_Research_Approaches',
     'SENIORITY_PUBLICATIONS': 'Expert_Seniority_Publications',
     'SENIORITY_REVIEWER': 'Expert_Seniority_Reviewer',
     'EXPERIENCE_REVIEWER': 'Expert_Experience_Reviewer',

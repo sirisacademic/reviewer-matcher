@@ -8,18 +8,24 @@ FILE_EXPERT_PROJECT_PREDICTIONS = 'expert_project_predictions.tsv'
 # Output expert assignment.
 FILE_EXPERT_PROJECT_ASSIGNMENTS = 'expert_project_assignments.tsv'
 
+# Potential projects to be assigned for each expert.
+FILE_EXPERT_PROJECT_POTENTIAL_ASSIGNMENTS = "expert_project_potential_assignments.tsv"
+
 # !!!! TODO: Unify handling of column names accorss configuration files !!!!
 
 # Input column names (in original data obtained from spreadsheets).
 EXPERT_ID_INPUT_COLUMN = 'ID'
 EXPERT_GENDER_INPUT_COLUMN = 'GENDER'
-EXPERT_MAX_PROJECTS_INPUT_COLUMN = 'MAX_PROJECTS_REVIEW'
+EXPERT_MAX_PROPOSED_PROJECTS_INPUT_COLUMN = 'MAX_PROJECTS_REVIEW'
 EXPERT_NAME_INPUT_COLUMN = 'FULL_NAME'
 EXPERT_RESEARCH_TYPES_INPUT_COLUMN = 'RESEARCH_TYPES'
+EXPERT_RESEARCH_APPROACHES_INPUT_COLUMN = 'RESEARCH_APPROACHES'
 
 PROJECT_ID_INPUT_COLUMN = 'ID'
 PROJECT_TITLE_INPUT_COLUMN = 'TITLE'
+PROJECT_APPROACH_TYPE_INPUT_COLUMN = 'APPROACH_TYPE'
 PROJECT_RESEARCH_TYPES_INPUT_COLUMN = 'RESEARCH_TYPE'
+PROJECT_RESEARCH_APPROACHES_INPUT_COLUMN = 'RESEARCH_APPROACHES'
 
 MIN_PROBABILITY_THRESHOLD = 0.5
 
@@ -35,12 +41,18 @@ MODEL_PATH = 'model/final_model_all_features.pkl'
 
 # Assignment criteria
 NUM_PROPOSED_EXPERTS = 3
-NUM_ALTERNATIVE_EXPERTS = 5
+NUM_ALTERNATIVE_EXPERTS = 20
 MIN_WOMEN_PROPOSED = 1
 MIN_WOMEN_ALTERNATIVE = 2
 
-# Default number of maximum projects that an expert can review if not included in the expert's data.
-MAX_DEFAULT_PROJECTS_PER_EXPERT = 5
+# Min. number of projects an expert should be assigned to (if possible)
+MIN_PROJECTS_PER_EXPERT = 2
+
+# Max. default projects to which the expert can be assigned as "proposed"
+MAX_DEFAULT_PROPOSED_PROJECTS_PER_EXPERT = 5
+
+# Max. total projects to which the expert can be assigned.
+MAX_DEFAULT_TOTAL_PROJECTS_PER_EXPERT = 20
 
 # Compute PCA scores.
 COMPUTE_PCA_SCORES = False

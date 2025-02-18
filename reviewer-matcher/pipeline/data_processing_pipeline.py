@@ -72,6 +72,7 @@ class DataProcessingPipeline:
         self.file_expert_project_features = config_manager.get('FILE_EXPERT_PROJECT_FEATURES')
         self.file_expert_project_predictions = config_manager.get('FILE_EXPERT_PROJECT_PREDICTIONS')
         self.file_expert_project_assignments = config_manager.get('FILE_EXPERT_PROJECT_ASSIGNMENTS')
+        self.file_expert_project_potential_assignments = config_manager.get('FILE_EXPERT_PROJECT_POTENTIAL_ASSIGNMENTS')
         # Initialize modules
         self._initialize_modules()
         # Component mapping
@@ -486,8 +487,22 @@ class DataProcessingPipeline:
                 self.expert_project_assignments,
                 self.file_expert_project_assignments,
                 output_dir=self.assignments_output_dir
-            )
+            )           
             print('\nExpert-project assignments generated and saved successfully.')
+            # Generate file with potential projects to be assigned for each expert - in case re-assignments should be done manually.
+            print('Generating expert-project alternatives list...')
+            self.expert_project_alternatives_df = self.expert_assigner.generate_expert_project_alternatives(
+                self.expert_project_predicted_ranks,
+                self.expert_project_assignments,
+                self.experts,
+                self.projects
+            )
+            self.data_saver.save_data(
+                self.expert_project_alternatives_df,
+                self.file_expert_project_potential_assignments,
+                output_dir=self.assignments_output_dir
+            )
+            print('Expert-project alternatives saved successfully.')
             # Analyze final assignment outcomes
             print('\nAnalyzing assignment outcomes...')
             # Get overall statistics
@@ -510,7 +525,6 @@ class DataProcessingPipeline:
             flexed_projects = project_status[project_status['All_Requirements_Met'] == False]
             if not flexed_projects.empty:
                 print(f'Post-assignment warning: There are {len(flexed_projects)} projects for which the assignment constrains were flexed.')
-            
             # Save all reports
             reports = {
                 'expert_distribution': expert_distribution if not expert_distribution.empty else None,
@@ -518,7 +532,7 @@ class DataProcessingPipeline:
             }
             for report_name, df in reports.items():
                 if df is not None:
-                    filename = f"assignment_issues_{report_name}.tsv"
+                    filename = f"assignment_{report_name}.tsv"
                     print(f"\nSaving {report_name} report to {filename}")
                     self.data_saver.save_data(
                         df,
