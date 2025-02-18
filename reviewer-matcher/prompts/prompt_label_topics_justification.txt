@@ -1,0 +1,82 @@
+Given:
+i) A title and an abstract from a project proposal;
+ii) A list of topics including research approaches (disciplines, methods, strategies, techniques) or scopes of work (specific research areas).
+
+Please indicate, for each research approach/scope, whether it is explicitly mentioned as being considered in the project, based on the information provided in the abstract.
+
+Please provide a very short justification for your response.
+
+Formatting instructions:
+
+    Please return the output in valid JSON format with beginning and end marks, with the following structure.
+
+    ```json
+    {{
+      "TOPIC1": {{
+          "response": "YES/NO",
+          "justification": "Short sentence explaining your response."
+      }},
+      "TOPIC2": {{
+          "response": "YES/NO",
+          "justification": "Short sentence explaining your response."
+      }},
+      ...
+    }}
+    ```
+
+*** Return only the JSON content, and nothing else. ***
+
+------------------------------------
+Example:
+
+Title:
+Enhancing Resident Immunity against Sexually Transmitted Infections (SPIRITS)
+
+Abstract:
+This project aims to enhance mucosal immunity to sexually transmitted infections (STIs) by focusing on the role of resident memory immune cells in the cervicovaginal mucosa. Using a human cervical explant model, the research will explore how pathogen-related signals and changes in the local tissue environment, such as inflammation, hormones, and microbial dysbiosis, affect immune responses. The goal is to identify signals that effectively engage mucosal immunity and improve vaccine design against STIs, addressing challenges like asymptomatic infections and antibiotic resistance. The project expects to provide insights into the unique features of resident immune cells and their role in protective immunity.
+
+Topics:
+- Gynaecologic conditions
+- Male reproductive system conditions
+- Sexual and Reproductive Health (not related to illnesses)
+- Reproductive medicine
+- Pregnancy, birth and postpartum
+
+
+Expected output:
+
+```json
+{{
+    "Gynaecologic conditions": {{
+        "response": "YES",
+        "justification": "The project focuses on the cervicovaginal mucosa."
+    }},
+    "Male reproductive system conditions": {{
+        "response": "NO",
+        "justification": "The project does not focus on male reproductive system conditions."
+    }},
+    "Sexual and Reproductive Health (not related to illnesses)": {{
+        "response": "NO",
+        "justification": "The project is focused on illness-related sexual and reproductive health."
+    }},
+    "Reproductive medicine": {{
+        "response": "NO",
+        "justification": "The project focuses on mucosal immunity rather than on reproductive medicine."
+    }},
+    "Pregnancy, birth and postpartum": {{
+        "response": "NO",
+        "justification": "The study does not involve pregnancy, birth, or postpartum conditions."
+    }}
+}}
+```
+
+------------------------------------
+Title:
+{title}
+
+Abstract:
+{abstract}
+
+Topics:
+{topics}
+

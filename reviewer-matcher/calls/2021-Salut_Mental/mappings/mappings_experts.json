@@ -1,0 +1,63 @@
+{
+    "call_name": "2021-Salut_Mental",
+    "input_file": "input_experts_aquas.xlsx",
+    "header_row": 0,
+    "first_data_row": 1, 
+    "column_mappings": {
+      "FULL_NAME": "A",
+      "ORCID": "B",
+      "GENDER": "C",
+      "EXPERIENCE_REVIEWER": "D",
+      "EXPERIENCE_REVIEWER_DETAILS": "E",
+      "EXPERIENCE_PANEL": "F",
+      "EXPERIENCE_PANEL_DETAILS": "G",
+      "OTHER_RESEARCH_AREAS": "AI",
+      "OTHER_RESEARCH_APPROACHES": "BZ",        
+      "POPULATION": "CA",
+      "COMMENTS": "CB",
+      "RAW_PUBLICATIONS": "CC",
+      "NUMBER_PUBLICATIONS": "CD",
+      "NUMBER_CITATIONS": "CE"
+    },
+    "multi_column_values": {
+      "RESEARCH_TYPES": "I:M",
+      "RESEARCH_AREAS": "P:AH",
+      "RESEARCH_APPROACHES": "AK:BY"
+    }, 
+    "separators": {
+      "POPULATION": ";"
+    },
+    "values": {
+      "GENDER": {
+        "Male": "male",
+        "Female": "female",
+        "Other": "other"
+      },
+      "EXPERIENCE_REVIEWER": {
+        "Yes": "yes",
+        "No": "no"
+      },
+      "EXPERIENCE_PANEL": {
+        "Yes": "yes",
+        "No": "no"
+      },
+      "RESEARCH_TYPES": {
+        "Basic Research": "basic",
+        "Clinical Research": "clinical",
+        "Applied Clinical Research": "applied_clinical",
+        "Transalational Research": "translational",
+        "Translational Research": "translational",
+        "Epidemiology / Public Health Research": "epidemiology"
+      },
+      "POPULATION": {
+        "All": "all",
+        "Adolescents": "adolescents",
+        "Adults": "adults",
+        "Children": "children",
+        "Elderly": "elderly",
+        "Newborns": "newborns"
+      }
+    }
+}
+
+
