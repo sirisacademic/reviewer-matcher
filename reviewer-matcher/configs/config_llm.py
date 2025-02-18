@@ -32,7 +32,7 @@ MODELS_JSON_RESPONSE = [
 
 # Add external model specific settings. Now using Together.AI for external models, but it can be changed to any OpenAI-compliant provider.
 EXTERNAL_MODEL_URL = 'https://api.together.xyz/v1/chat/completions'
-EXTERNAL_MODEL_API_KEY = 'c9bd0e95399a1bf9defad8ae8ab1b37db4c706b9e13a2e3e04bc33dac363845e'
+EXTERNAL_MODEL_API_KEY = '[API KEY HERE]'
 
 ### Whether to extract fine-grained methods in one step.
 # If False, methods are first extracted and then classified into "standard" or "specific" in a second step.
